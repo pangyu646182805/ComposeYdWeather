@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <style name="Theme.ComposeYdWeather" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/bg_color</item>
+        <!--启动页背景颜色-->
+        <item name="android:windowSplashScreenBackground">@color/bg_color</item>
+        <!--启动页图标-->
+        <item name="android:windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
+        <item name="android:windowSplashScreenAnimationDuration">3000</item>
+    </style>
+</resources>

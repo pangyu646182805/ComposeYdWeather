@@ -1,4 +1,4 @@
-package com.yd.weather.ui.theme
+package com.yd.weather.res
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle
