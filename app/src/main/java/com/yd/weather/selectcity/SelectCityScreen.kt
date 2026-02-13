@@ -3,6 +3,7 @@ package com.yd.weather.selectcity
 import androidx.compose.animation.AnimatedContentScope
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.foundation.gestures.ScrollableDefaults
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -51,6 +52,7 @@ internal fun SelectCityScreen(
         }
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
             modifier = Modifier.padding(innerPadding)
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState(), flingBehavior = ScrollableDefaults.flingBehavior())
