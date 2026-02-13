@@ -43,14 +43,12 @@ internal fun MainScreen(
             modifier = modifier.fillMaxSize()
         ) {
             Text(
-                text = "Hello Android!",
-                modifier = modifier
+                text = "Hello Compose!",
             )
 
             Button(shape = RoundedCornerShape(8.dp), onClick = toSelectCity) {
                 Text(
                     text = "选择城市",
-                    modifier = modifier
                 )
             }
         }

@@ -2,14 +2,18 @@ package com.yd.weather.selectcity
 
 import androidx.compose.animation.AnimatedContentScope
 import androidx.compose.animation.ExperimentalSharedTransitionApi
-import androidx.compose.animation.SharedTransitionScope
+import androidx.compose.foundation.gestures.ScrollableDefaults
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -40,16 +44,21 @@ internal fun SelectCityScreen(
     selectCityData: SelectCityData? = null,
 ) {
     Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-        val modifier = Modifier.padding(innerPadding)
         val text = when (viewState) {
             ViewState.Loading -> "Loading"
             ViewState.Success -> Json.encodeToString(selectCityData)
             ViewState.Error -> "Error"
         }
-        Text(
-            text = text,
-            modifier = modifier
-        )
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.padding(innerPadding)
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState(), flingBehavior = ScrollableDefaults.flingBehavior())
+        ) {
+            Text(
+                text = text,
+            )
+        }
     }
 }
 
