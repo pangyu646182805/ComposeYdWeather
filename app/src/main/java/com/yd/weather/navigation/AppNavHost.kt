@@ -15,6 +15,7 @@ import com.yd.weather.launch.launchGraph
 import com.yd.weather.main.mainGraph
 import com.yd.weather.routes.LaunchRoutes
 import com.yd.weather.routes.MainRoutes
+import com.yd.weather.selectcity.selectCityGraph
 import kotlinx.coroutines.flow.collectLatest
 
 @Composable
@@ -60,31 +61,24 @@ fun AppNavHost(
             },
             // 返回时页面进入动画
             popEnterTransition = {
-                val hasMainRoute = targetState.destination.hasRoute<MainRoutes.Main>()
-                when {
-                    hasMainRoute -> fadeIn(tween(300))
-                    else -> slideIntoContainer(
-                        towards = AnimatedContentTransitionScope.SlideDirection.Left,
-                        animationSpec = tween(300)
-                    )
-                }
+                slideIntoContainer(
+                    towards = AnimatedContentTransitionScope.SlideDirection.Right,
+                    animationSpec = tween(300)
+                )
             },
             // 返回时页面退出动画
             popExitTransition = {
-                val hasMainRoute = targetState.destination.hasRoute<MainRoutes.Main>()
-                when {
-                    hasMainRoute -> fadeOut(tween(300))
-                    else -> slideOutOfContainer(
-                        towards = AnimatedContentTransitionScope.SlideDirection.Left,
-                        animationSpec = tween(300)
-                    )
-                }
+                slideOutOfContainer(
+                    towards = AnimatedContentTransitionScope.SlideDirection.Right,
+                    animationSpec = tween(300)
+                )
             }
         ) {
             mainGraph(
                 navController,
                 this@SharedTransitionLayout
             )
+            selectCityGraph(navController)
             launchGraph(navController, this@SharedTransitionLayout)
         }
     }

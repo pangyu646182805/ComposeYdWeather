@@ -23,13 +23,63 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    // ABI 分包配置 - 一次性打包多个架构版本
+    splits {
+        abi {
+            // 启用 ABI 分包
+            isEnable = true
+            // 重置默认列表
+            reset()
+            // 包含的架构：32位和64位 ARM
+            include("armeabi-v7a", "arm64-v8a")
+            // 是否生成通用 APK（包含所有架构）
+            // 设置为 true 会额外生成一个包含所有架构的 APK
+            isUniversalApk = false
+        }
+    }
+
+    signingConfigs {
+        create("keyStoreDebug") {
+            keyAlias = "CashBee"
+            keyPassword = "cashbee2025"
+            storeFile = file("CashBee.jks")
+            storePassword = "cashbee2025"
+
+            enableV1Signing = true
+            enableV2Signing = true
+            enableV3Signing = true
+            enableV4Signing = true
+        }
+        create("keyStoreRelease") {
+            keyAlias = "CashBee"
+            keyPassword = "cashbee2025"
+            storeFile = file("CashBee.jks")
+            storePassword = "cashbee2025"
+
+            enableV1Signing = true
+            enableV2Signing = true
+            enableV3Signing = true
+            enableV4Signing = true
+        }
+    }
+
     buildTypes {
-        release {
-            isMinifyEnabled = false
+        debug {
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            signingConfig = signingConfigs.getByName("keyStoreDebug")
+            buildConfigField("Boolean", "DEBUG", "true")
+        }
+        release {
+            isMinifyEnabled = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+            signingConfig = signingConfigs.getByName("keyStoreRelease")
+            buildConfigField("Boolean", "DEBUG", "false")
         }
     }
     compileOptions {
@@ -43,6 +93,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -73,4 +124,10 @@ dependencies {
     implementation(libs.androidx.room.runtime)
     ksp(libs.androidx.room.compiler)
     implementation(libs.androidx.room.ktx)
+    implementation(libs.okhttp3)
+    implementation(libs.retrofit)
+    implementation(libs.okhttp.logging)
+    implementation(libs.retrofit2.kotlinx.serialization.converter)
+    implementation(libs.toaster)
+    implementation(libs.logcat)
 }

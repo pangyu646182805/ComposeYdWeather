@@ -4,9 +4,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavOptions
 import com.yd.weather.app.AppState
+import com.yd.weather.app.ViewState
 import com.yd.weather.navigation.AppNavigator
 import com.yd.weather.navigation.NavigationResultKey
 import com.yd.weather.routes.RouteInterceptor
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
 /**
@@ -43,6 +46,18 @@ abstract class BaseViewModel(
     protected val appState: AppState,
     protected val routeInterceptor: RouteInterceptor = RouteInterceptor()
 ) : ViewModel() {
+    private val _viewState = MutableStateFlow<ViewState>(ViewState.Loading)
+    val viewState: StateFlow<ViewState> = _viewState
+
+    fun setViewState(viewState: ViewState) {
+        _viewState.value = viewState
+    }
+
+    fun isSuccess() = ViewState.Success == _viewState.value
+
+    fun isLoading() = ViewState.Success == _viewState.value
+
+    fun isError() = ViewState.Error == _viewState.value
 
     // ==================== 基础导航方法 ====================
 

@@ -15,13 +15,4 @@ object LaunchRoutes {
      */
     @Serializable
     data object Splash
-
-    /**
-     * 引导页路由
-     *
-     * @param fromSettings 是否从设置页面进入
-     * @author Joker.X
-     */
-    @Serializable
-    data class Guide(val fromSettings: Boolean = false)
 }
