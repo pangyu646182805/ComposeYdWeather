@@ -1,4 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="bg_color">#FF18191A</color>
+    <color name="text_color_01">#9696A6</color>
+    <color name="card_color_01">#0E1014</color>
+    <color name="card_color_02">#1D2129</color>
+    <color name="card_color_03">#14171F</color>
+    <color name="card_color_04">#333333</color>
+    <color name="card_color_05">#2C2C42</color>
+    <color name="card_color_06">#2A2A3D</color>
+    <color name="color_line">#1D2129</color>
 </resources>
