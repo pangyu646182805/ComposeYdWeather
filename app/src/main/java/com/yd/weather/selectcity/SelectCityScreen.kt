@@ -3,26 +3,23 @@ package com.yd.weather.selectcity
 import androidx.compose.animation.AnimatedContentScope
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.ScrollableDefaults
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -33,7 +30,6 @@ import com.yd.weather.R
 import com.yd.weather.app.ViewState
 import com.yd.weather.component.AppScaffold
 import com.yd.weather.component.AppText
-import com.yd.weather.component.CommonScaffold
 import com.yd.weather.component.MultipleStatusView
 import com.yd.weather.component.ScaleLayout
 import com.yd.weather.component.SearchTopAppBar
@@ -41,8 +37,8 @@ import com.yd.weather.component.WrapColumn
 import com.yd.weather.model.CityData
 import com.yd.weather.model.SelectCityData
 import com.yd.weather.res.YdWeatherAppTheme
+import com.yd.weather.utils.ToastUtils
 import com.yd.weather.viewmodel.SelectCityViewModel
-import kotlinx.serialization.json.Json
 
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
@@ -64,7 +60,13 @@ internal fun SelectCityScreen(
     viewState: ViewState = ViewState.Loading,
     selectCityData: SelectCityData? = null,
 ) {
+    val focusManager = LocalFocusManager.current
     AppScaffold(
+        modifier = Modifier.pointerInput(Unit) {
+            detectTapGestures(onTap = {
+                focusManager.clearFocus()
+            })
+        },
         topBar = {
             WrapColumn {
                 SearchTopAppBar(
@@ -135,7 +137,9 @@ private fun SelectCityItem(cityData: CityData) {
                 RoundedCornerShape(percent = 50)
             )
             .padding(vertical = 8.dp),
-        onClick = {}
+        onClick = {
+            ToastUtils.show(cityData.name ?: "")
+        }
     ) {
         AppText(
             text = cityData.name ?: "",
