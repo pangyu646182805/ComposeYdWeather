@@ -4,6 +4,7 @@ import com.yd.weather.model.NetworkResponse
 import com.yd.weather.utils.LogUtils
 import com.yd.weather.utils.ToastUtils
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -19,6 +20,7 @@ object ResultHandler {
         scope: CoroutineScope,
         flow: Flow<Result<NetworkResponse<T>>>,
         showToast: Boolean = true,
+        delayTimeMillis: Long? = null,
         onLoading: () -> Unit = {},
         onSuccess: (NetworkResponse<T>) -> Unit = {},
         onSuccessWithData: (T) -> Unit = {},
@@ -26,6 +28,9 @@ object ResultHandler {
         onFinally: () -> Unit = {}
     ) {
         scope.launch {
+            delayTimeMillis?.let {
+                if (it > 0) delay(it)
+            }
             try {
                 flow.collectLatest { result ->
                     when (result) {
@@ -62,6 +67,7 @@ object ResultHandler {
     fun <T> handleResultWithData(
         scope: CoroutineScope,
         flow: Flow<Result<NetworkResponse<T>>>,
+        delayTimeMillis: Long? = null,
         showToast: Boolean = true,
         onLoading: () -> Unit = {},
         onData: (T) -> Unit,
@@ -71,6 +77,7 @@ object ResultHandler {
         handleResult(
             scope = scope,
             flow = flow,
+            delayTimeMillis = delayTimeMillis,
             showToast = showToast,
             onLoading = onLoading,
             onSuccessWithData = onData,

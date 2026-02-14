@@ -20,16 +20,17 @@ class SelectCityViewModel @Inject constructor(
     private val weatherRepository: WeatherRepository
 ) : BaseViewModel(navigator, appState) {
     init {
-        loadCityList()
+        loadCityList(delayTimeMillis = 200)
     }
 
     private val _selectCityData = MutableStateFlow<SelectCityData?>(null)
     val selectCityData: StateFlow<SelectCityData?> = _selectCityData
 
-    fun loadCityList() {
+    fun loadCityList(delayTimeMillis: Long? = null) {
         ResultHandler.handleResultWithData(
             scope = viewModelScope,
             flow = weatherRepository.obtainCityList().asResult(),
+            delayTimeMillis = delayTimeMillis,
             onLoading = { setViewState(ViewState.Loading) },
             onData = { data ->
                 setViewState(ViewState.Success)
