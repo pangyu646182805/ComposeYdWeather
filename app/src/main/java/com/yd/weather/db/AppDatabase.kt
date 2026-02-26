@@ -2,9 +2,11 @@ package com.yd.weather.db
 
 import androidx.room.Database
 import androidx.room.RoomDatabase
+import com.yd.weather.db.model.CityData
 
 @Database(
     entities = [
+        CityData::class,
     ],
     version = 1,
     exportSchema = false

@@ -8,5 +8,5 @@ import androidx.navigation.NavHostController
 fun NavGraphBuilder.selectCityGraph(
     navController: NavHostController,
 ) {
-    selectCityScreen()
+    selectCityScreen(navController)
 }

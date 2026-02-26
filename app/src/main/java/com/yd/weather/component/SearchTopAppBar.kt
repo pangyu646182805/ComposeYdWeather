@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -17,6 +18,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import kotlinx.coroutines.delay
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -24,6 +27,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.text.input.ImeAction
@@ -38,16 +42,30 @@ import com.yd.weather.res.YdWeatherAppTheme
 @Composable
 fun SearchTopAppBar(
     onBackClick: () -> Unit,
-    onSearch: (String) -> Unit,
+    onSearch: ((String) -> Unit)? = null,
+    onChange: ((String) -> Unit)? = null,
     initialSearchText: String = "",
     scrollBehavior: TopAppBarScrollBehavior? = null,
     canPop: Boolean = true,
 ) {
     var searchText by rememberSaveable { mutableStateOf(initialSearchText) }
     val focusManager = LocalFocusManager.current
+    val imeVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
+
+    LaunchedEffect(imeVisible) {
+        if (!imeVisible) focusManager.clearFocus()
+    }
+
+    // onChange debounce：searchText 变化后等待 300ms 无新输入才回调
+    LaunchedEffect(searchText) {
+        if (searchText.isNotEmpty()) {
+            delay(300L)
+            onChange?.invoke(searchText)
+        }
+    }
 
     val performSearch = {
-        onSearch(searchText)
+        onSearch?.invoke(searchText)
         focusManager.clearFocus()
     }
 

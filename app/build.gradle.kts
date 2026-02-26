@@ -130,4 +130,5 @@ dependencies {
     implementation(libs.retrofit2.kotlinx.serialization.converter)
     implementation(libs.toaster)
     implementation(libs.logcat)
+    implementation(libs.xxpermissions)
 }

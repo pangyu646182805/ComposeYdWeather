@@ -33,30 +33,18 @@ internal fun SplashRoute(
     animatedContentScope: AnimatedContentScope,
     viewModel: SplashViewModel = hiltViewModel()
 ) {
-    SplashScreen(
-        toHome = viewModel::toMainPage
-    )
+    SplashScreen()
 }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalSharedTransitionApi::class)
 @Composable
-internal fun SplashScreen(
-    toHome: () -> Unit = {}
-) {
-    SplashContentView(
-        toHome = toHome
-    )
+internal fun SplashScreen() {
+    SplashContentView()
 }
 
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
-private fun SplashContentView(
-    toHome: () -> Unit = {}
-) {
-    LaunchedEffect(Unit) {
-        delay(1200)
-        toHome()
-    }
+private fun SplashContentView() {
     Image(
         painter = painterResource(id = R.mipmap.splash),
         contentDescription = "splash",

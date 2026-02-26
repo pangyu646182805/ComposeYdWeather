@@ -187,6 +187,12 @@ abstract class BaseViewModel(
         }
     }
 
+    fun navigateToOrBackTo(route: Any) {
+        viewModelScope.launch {
+            navigator.navigateToOrBackTo(route)
+        }
+    }
+
     // ==================== 内部方法 ====================
 
     /**

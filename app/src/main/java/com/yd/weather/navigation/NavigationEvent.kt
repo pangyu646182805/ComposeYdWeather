@@ -51,4 +51,12 @@ sealed class NavigationEvent {
         val route: Any,
         val inclusive: Boolean = false
     ) : NavigationEvent()
+
+    /**
+     * 智能导航：回退栈中存在则 popBackTo，否则 replace（清空栈并导航）
+     *
+     * @param route 目标路由（必须是 @Serializable）
+     * @author Joker.X
+     */
+    data class NavigateToOrBackTo(val route: Any) : NavigationEvent()
 }

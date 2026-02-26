@@ -4,6 +4,7 @@ import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionScope
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
+import com.yd.weather.navigation.NavTransitions
 import com.yd.weather.routes.LaunchRoutes
 
 /**
@@ -14,7 +15,12 @@ import com.yd.weather.routes.LaunchRoutes
  */
 @OptIn(ExperimentalSharedTransitionApi::class)
 fun NavGraphBuilder.splashScreen(sharedTransitionScope: SharedTransitionScope) {
-    composable<LaunchRoutes.Splash> {
+    composable<LaunchRoutes.Splash>(
+        enterTransition = NavTransitions.None.enter,
+        exitTransition = NavTransitions.Fade.exit,
+        popEnterTransition = NavTransitions.None.enter,
+        popExitTransition = NavTransitions.Fade.exit,
+    ) {
         SplashRoute(sharedTransitionScope, this@composable)
     }
 }

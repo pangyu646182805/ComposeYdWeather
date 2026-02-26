@@ -1,6 +1,8 @@
 package com.yd.weather.navigation
 
+import android.annotation.SuppressLint
 import androidx.navigation.NavController
+import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavOptions
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -136,6 +138,16 @@ class AppNavigator @Inject constructor() {
     suspend fun navigateBackTo(route: Any, inclusive: Boolean = false) {
         _navigationEvents.emit(NavigationEvent.NavigateBackTo(route, inclusive))
     }
+
+    /**
+     * 智能导航：回退栈中存在目标路由则 popBackTo，否则 replace（清空栈并导航）
+     *
+     * @param route 目标路由（必须是 @Serializable）
+     * @author Joker.X
+     */
+    suspend fun navigateToOrBackTo(route: Any) {
+        _navigationEvents.emit(NavigationEvent.NavigateToOrBackTo(route))
+    }
 }
 
 /**
@@ -146,6 +158,7 @@ class AppNavigator @Inject constructor() {
  * @param event 导航事件
  * @author Joker.X
  */
+@SuppressLint("RestrictedApi")
 fun NavController.handleNavigationEvent(event: NavigationEvent) {
     when (event) {
         is NavigationEvent.NavigateTo -> {
@@ -171,6 +184,19 @@ fun NavController.handleNavigationEvent(event: NavigationEvent) {
         is NavigationEvent.NavigateBackTo -> {
             // 弹出回退栈到指定路由
             this.popBackStack(event.route, event.inclusive)
+        }
+
+        is NavigationEvent.NavigateToOrBackTo -> {
+            val isInBackStack = currentBackStack.value.any {
+                it.destination.hasRoute(event.route::class)
+            }
+            if (isInBackStack) {
+                this.popBackStack(event.route, inclusive = false)
+            } else {
+                this.navigate(event.route) {
+                    popUpTo(0) { inclusive = true }
+                }
+            }
         }
     }
 }

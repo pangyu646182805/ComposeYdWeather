@@ -4,32 +4,36 @@ import androidx.room.ColumnInfo
 import androidx.room.Embedded
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 @Entity(tableName = "city_data")
+@Serializable
 data class CityData(
     @PrimaryKey
-    val id: Long,
-
-    val key: String,
+    val key: String = "",
 
     @ColumnInfo(name = "city_level_name")
-    val cityLevelName: String?,
+    @SerialName("city_level_name")
+    val cityLevelName: String? = null,
 
-    val name: String?,
+    val name: String? = null,
 
-    val street: String?,
+    val street: String? = null,
 
-    val country: String?,
+    val country: String? = null,
 
-    val upper: String?,
+    val upper: String? = null,
 
-    val prov: String?,
+    val prov: String? = null,
 
     @ColumnInfo(name = "cityid")
-    val cityId: String?,
+    @SerialName("cityid")
+    val cityId: String? = null,
 
     @ColumnInfo(name = "city_level_id")
-    val cityLevelId: String?,
+    @SerialName("city_level_id")
+    val cityLevelId: String? = null,
 
     @ColumnInfo(defaultValue = "0")
     val isLocationCity: Boolean = false,

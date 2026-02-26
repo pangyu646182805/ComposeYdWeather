@@ -95,7 +95,7 @@ object ResultHandler {
     ) {
         onSuccess(response)
         if (response.isSuccessful) {
-            val data = response.data ?: return
+            val data = response.data ?: response.result ?: return
             onSuccessWithData(data)
         } else {
             val errorMsg = response.errorMsg ?: "未知错误"

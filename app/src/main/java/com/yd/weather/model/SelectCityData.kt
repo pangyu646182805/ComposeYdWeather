@@ -1,5 +1,6 @@
 package com.yd.weather.model
 
+import com.yd.weather.db.model.CityData
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 

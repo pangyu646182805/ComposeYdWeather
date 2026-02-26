@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.Alignment.Companion
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -213,14 +214,16 @@ fun EndRow(
 @Composable
 fun WrapRow(
     modifier: Modifier = Modifier,
+    align: Alignment.Horizontal = Alignment.CenterHorizontally,
     horizontalArrangement: Arrangement.Horizontal = Arrangement.Start,
     verticalAlignment: Alignment.Vertical = Alignment.CenterVertically,
     padding: Dp = 0.dp,
     content: @Composable RowScope.() -> Unit
 ) {
     Row(
-        modifier = modifier
-            .wrapContentWidth()
+        modifier = Modifier
+            .wrapContentWidth(align = align)
+            .then(modifier)
             .let { if (padding > 0.dp) it.padding(padding) else it },
         horizontalArrangement = horizontalArrangement,
         verticalAlignment = verticalAlignment,

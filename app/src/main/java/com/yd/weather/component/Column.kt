@@ -287,9 +287,10 @@ fun WrapColumn(
     content: @Composable ColumnScope.() -> Unit
 ) {
     Column(
-        modifier = modifier
+        modifier = Modifier
             .wrapContentWidth()
             .wrapContentHeight()
+            .then(modifier)
             .let { if (padding > 0.dp) it.padding(padding) else it },
         verticalArrangement = verticalArrangement,
         horizontalAlignment = horizontalAlignment,

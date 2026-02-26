@@ -1,20 +1,14 @@
 package com.yd.weather.navigation
 
-import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.SharedTransitionLayout
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
-import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.rememberNavController
 import com.yd.weather.launch.launchGraph
 import com.yd.weather.main.mainGraph
 import com.yd.weather.routes.LaunchRoutes
-import com.yd.weather.routes.MainRoutes
 import com.yd.weather.selectcity.selectCityGraph
 import kotlinx.coroutines.flow.collectLatest
 
@@ -37,42 +31,11 @@ fun AppNavHost(
             navController = navController,
             startDestination = LaunchRoutes.Splash,
             modifier = modifier,
-            // 页面进入动画
-            enterTransition = {
-                val hasMainRoute = targetState.destination.hasRoute<MainRoutes.Main>()
-                when {
-                    hasMainRoute -> fadeIn(tween(300))
-                    else -> slideIntoContainer(
-                        towards = AnimatedContentTransitionScope.SlideDirection.Left,
-                        animationSpec = tween(300)
-                    )
-                }
-            },
-            // 页面退出动画
-            exitTransition = {
-                val hasMainRoute = targetState.destination.hasRoute<MainRoutes.Main>()
-                when {
-                    hasMainRoute -> fadeOut(tween(300))
-                    else -> slideOutOfContainer(
-                        towards = AnimatedContentTransitionScope.SlideDirection.Left,
-                        animationSpec = tween(300)
-                    )
-                }
-            },
-            // 返回时页面进入动画
-            popEnterTransition = {
-                slideIntoContainer(
-                    towards = AnimatedContentTransitionScope.SlideDirection.Right,
-                    animationSpec = tween(300)
-                )
-            },
-            // 返回时页面退出动画
-            popExitTransition = {
-                slideOutOfContainer(
-                    towards = AnimatedContentTransitionScope.SlideDirection.Right,
-                    animationSpec = tween(300)
-                )
-            }
+            // 全局默认：横向滑动。各页面可在自己的 composable() 中覆盖
+            enterTransition = NavTransitions.SlideHorizontal.enter,
+            exitTransition = NavTransitions.SlideHorizontal.exit,
+            popEnterTransition = NavTransitions.SlideHorizontal.popEnter,
+            popExitTransition = NavTransitions.SlideHorizontal.popExit,
         ) {
             mainGraph(
                 navController,
