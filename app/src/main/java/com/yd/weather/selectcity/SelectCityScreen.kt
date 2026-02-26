@@ -49,7 +49,6 @@ import com.yd.weather.component.WrapColumn
 import com.yd.weather.component.WrapRow
 import com.yd.weather.component.alphaClick
 import com.yd.weather.component.bounceClick
-import com.yd.weather.component.iosBounceScroll
 import com.yd.weather.db.model.CityData
 import com.yd.weather.model.LocationData
 import com.yd.weather.model.SelectCityData
@@ -187,7 +186,6 @@ private fun SelectCityGridContent(
     LazyVerticalGrid(
         modifier = Modifier
             .fillMaxSize()
-            .iosBounceScroll()
             .padding(horizontal = 20.dp),
         columns = GridCells.Fixed(4),
         horizontalArrangement = Arrangement.spacedBy(16.dp),

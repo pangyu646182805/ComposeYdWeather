@@ -58,10 +58,8 @@ fun SearchTopAppBar(
 
     // onChange debounce：searchText 变化后等待 300ms 无新输入才回调
     LaunchedEffect(searchText) {
-        if (searchText.isNotEmpty()) {
-            delay(300L)
-            onChange?.invoke(searchText)
-        }
+        delay(300L)
+        onChange?.invoke(searchText)
     }
 
     val performSearch = {
