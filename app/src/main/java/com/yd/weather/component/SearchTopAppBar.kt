@@ -30,6 +30,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.colorResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -98,6 +99,7 @@ fun SearchTopAppBar(
                             .weight(1f)
                             .padding(horizontal = 8.dp),
                         singleLine = true,
+                        textStyle = TextStyle.Default.copy(color = colorResource(R.color.text_color_01)),
                         keyboardOptions = KeyboardOptions(
                             imeAction = ImeAction.Search
                         ),
@@ -115,6 +117,16 @@ fun SearchTopAppBar(
                             innerTextField()
                         }
                     )
+
+                    if (searchText.isNotEmpty()) {
+                        CommonIcon(
+                            resId = R.mipmap.search_clear_normal,
+                            size = 12.dp,
+                            modifier = Modifier
+                                .padding(end = 8.dp)
+                                .clickable { searchText = "" },
+                        )
+                    }
                 }
             }
         },
