@@ -1,21 +1,23 @@
-# Add project specific ProGuard rules here.
-# You can control the set of applied configuration files using the
-# proguardFiles setting in build.gradle.
-#
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
+# 保留行号便于 crash 定位
+-keepattributes SourceFile,LineNumberTable
+-renamesourcefileattribute SourceFile
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
+# Kotlin Coroutines - R8 可能裁剪掉调度器工厂，需显式保留
+-keepnames class kotlinx.coroutines.internal.MainDispatcherFactory {}
+-keepnames class kotlinx.coroutines.CoroutineExceptionHandler {}
+-keepclassmembernames class kotlinx.** {
+    volatile <fields>;
+}
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
+# Kotlinx Serialization - $$serializer 在运行时通过反射访问
+-keepattributes *Annotation*, InnerClasses
+-keep,includedescriptorclasses class com.yd.weather.**$$serializer { *; }
+-keepclassmembers @kotlinx.serialization.Serializable class com.yd.weather.** {
+    *** Companion;
+    kotlinx.serialization.KSerializer serializer(...);
+}
 
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+# 应用数据类（网络响应模型 / Room 实体 / Type-Safe 路由）
+-keep class com.yd.weather.model.** { *; }
+-keep class com.yd.weather.db.model.** { *; }
+-keep class com.yd.weather.routes.** { *; }
