@@ -18,11 +18,13 @@ import com.yd.weather.routes.MainRoutes
 import com.yd.weather.net.ResultHandler
 import com.yd.weather.net.WeatherRepository
 import com.yd.weather.net.asResult
+import com.yd.weather.routes.WeatherPreviewRoutes
 import com.yd.weather.utils.AppRuntimeData
 import com.yd.weather.utils.LocationProvider
 import com.yd.weather.utils.MMKVUtils
 import com.yd.weather.utils.PermissionUtils
 import com.yd.weather.utils.ToastUtils
+import com.yd.weather.weatherpreview.WeatherPreviewRoute
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -81,6 +83,7 @@ class SelectCityViewModel @Inject constructor(
     }
 
     fun obtainLocationPermission(context: Context) {
+        if (_locationState.value == 1) return
         _locationState.value = 0
         PermissionUtils.requestLocationPermission(context) { granted ->
             if (granted) {
@@ -183,6 +186,12 @@ class SelectCityViewModel @Inject constructor(
         }
     }
 
+    fun gotoWeatherPreviewPage(cityData: CityData) {
+        viewModelScope.launch {
+            navigate(WeatherPreviewRoutes.WeatherPreview(cityData.cityId))
+        }
+    }
+
     fun addCity(cityData: CityData?) {
         if (cityData == null) {
             ToastUtils.show("数据异常，请稍后再试")
@@ -204,7 +213,12 @@ class SelectCityViewModel @Inject constructor(
                 weatherDbRepository.upsertCity(cityData)
             } else {
                 val weatherData = emptySimpleWeatherData()
-                weatherDbRepository.upsertCity(cityData.copy(key = cityData.cityId ?: "", weatherData = weatherData))
+                weatherDbRepository.upsertCity(
+                    cityData.copy(
+                        key = cityData.cityId ?: "",
+                        weatherData = weatherData
+                    )
+                )
             }
             AppRuntimeData.setCurrentCityData(cityData)
             val cityId = if (isLocationCity) Constants.LOCATION_CITY_ID else cityData.cityId

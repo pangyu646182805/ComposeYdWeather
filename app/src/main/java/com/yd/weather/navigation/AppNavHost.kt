@@ -10,6 +10,7 @@ import com.yd.weather.launch.launchGraph
 import com.yd.weather.main.mainGraph
 import com.yd.weather.routes.LaunchRoutes
 import com.yd.weather.selectcity.selectCityGraph
+import com.yd.weather.weatherpreview.weatherPreviewGraph
 import kotlinx.coroutines.flow.collectLatest
 
 @Composable
@@ -42,6 +43,7 @@ fun AppNavHost(
                 this@SharedTransitionLayout
             )
             selectCityGraph(navController)
+            weatherPreviewGraph(navController)
             launchGraph(navController, this@SharedTransitionLayout)
         }
     }

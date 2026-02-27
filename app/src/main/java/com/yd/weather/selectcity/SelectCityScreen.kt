@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavHostController
 import com.yd.weather.R
 import com.yd.weather.app.ViewState
 import com.yd.weather.component.AppScaffold
@@ -60,7 +61,7 @@ import com.yd.weather.viewmodel.SelectCityViewModel
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 internal fun SelectCityRoute(
-    animatedContentScope: AnimatedContentScope,
+    navController: NavHostController,
     canPop: Boolean = false,
     viewModel: SelectCityViewModel = hiltViewModel()
 ) {
@@ -71,6 +72,15 @@ internal fun SelectCityRoute(
     val locationData by viewModel.locationData.collectAsStateWithLifecycle()
     val locationState by viewModel.locationState.collectAsStateWithLifecycle()
     val searchResult by viewModel.searchResult.collectAsStateWithLifecycle()
+
+    val backStackEntry = navController.currentBackStackEntry
+    LaunchedEffect(backStackEntry) {
+        viewModel.observeAddCityResult(backStackEntry) { addCityId ->
+            val addCityData = selectCityData?.hotNational?.find { it.cityId == addCityId }
+                ?: selectCityData?.hotInternational?.find { it.cityId == addCityId }
+            viewModel.addCity(addCityData)
+        }
+    }
 
     val obtainLocationPermission = {
         viewModel.obtainLocationPermission(context)
@@ -84,6 +94,9 @@ internal fun SelectCityRoute(
         } else {
             viewModel.searchCity(searchKey)
         }
+    }
+    val gotoWeatherPreviewPage = { cityData: CityData ->
+        viewModel.gotoWeatherPreviewPage(cityData)
     }
 
     LaunchedEffect(Unit) {
@@ -99,7 +112,8 @@ internal fun SelectCityRoute(
         obtainLocationPermission = obtainLocationPermission,
         onBackClick = onBackClick,
         onChange = onChange,
-        searchResult = searchResult
+        searchResult = searchResult,
+        gotoWeatherPreviewPage = gotoWeatherPreviewPage
     )
 }
 
@@ -116,6 +130,7 @@ internal fun SelectCityScreen(
     onBackClick: () -> Unit = {},
     onChange: (String) -> Unit = {},
     searchResult: List<CityData>? = null,
+    gotoWeatherPreviewPage: (CityData) -> Unit = {}
 ) {
     val focusManager = LocalFocusManager.current
     AppScaffold(
@@ -148,6 +163,7 @@ internal fun SelectCityScreen(
                 locationState = locationState,
                 obtainLocationPermission = obtainLocationPermission,
                 searchResult = searchResult,
+                gotoWeatherPreviewPage = gotoWeatherPreviewPage
             )
         }
     }
@@ -161,25 +177,34 @@ private fun SelectCityContent(
     locationState: Int = 0,
     obtainLocationPermission: () -> Unit = {},
     searchResult: List<CityData>? = null,
+    gotoWeatherPreviewPage: (CityData) -> Unit = {}
 ) {
     Box(modifier = Modifier.fillMaxSize()) {
         SelectCityGridContent(
             selectCityData = selectCityData,
+            addedCities = addedCities,
             locationData = locationData,
             locationState = locationState,
             obtainLocationPermission = obtainLocationPermission,
+            gotoWeatherPreviewPage = gotoWeatherPreviewPage,
         )
 
-        SelectCitySearchContent(searchResult = searchResult)
+        SelectCitySearchContent(
+            searchResult = searchResult,
+            addedCities = addedCities,
+            gotoWeatherPreviewPage = gotoWeatherPreviewPage
+        )
     }
 }
 
 @Composable
 private fun SelectCityGridContent(
     selectCityData: SelectCityData? = null,
+    addedCities: List<CityData>,
     locationData: LocationData? = null,
     locationState: Int = 0,
     obtainLocationPermission: () -> Unit = {},
+    gotoWeatherPreviewPage: (CityData) -> Unit = {},
 ) {
     val hotNational = selectCityData?.hotNational ?: arrayListOf()
     val hotInternational = selectCityData?.hotInternational ?: arrayListOf()
@@ -232,7 +257,11 @@ private fun SelectCityGridContent(
             }
         }
         items(hotNational.size) { index ->
-            SelectCityItem(hotNational[index])
+            SelectCityItem(
+                hotNational[index],
+                addedCities = addedCities,
+                gotoWeatherPreviewPage = gotoWeatherPreviewPage
+            )
         }
         item(span = { GridItemSpan(maxLineSpan) }) {
             Box(modifier = Modifier.padding(top = 4.dp)) {
@@ -245,7 +274,11 @@ private fun SelectCityGridContent(
             }
         }
         items(hotInternational.size) { index ->
-            SelectCityItem(hotInternational[index])
+            SelectCityItem(
+                hotInternational[index],
+                addedCities = addedCities,
+                gotoWeatherPreviewPage = gotoWeatherPreviewPage
+            )
         }
     }
 }
@@ -253,6 +286,8 @@ private fun SelectCityGridContent(
 @Composable
 private fun SelectCitySearchContent(
     searchResult: List<CityData>? = null,
+    addedCities: List<CityData>,
+    gotoWeatherPreviewPage: (CityData) -> Unit = {},
 ) {
     val focusManager = LocalFocusManager.current
     val listState = rememberLazyListState()
@@ -276,7 +311,11 @@ private fun SelectCitySearchContent(
                 modifier = Modifier.fillMaxSize()
             ) {
                 items(searchResult?.size ?: 0) { index ->
-                    SearchResultItem(searchResult?.getOrNull(index))
+                    SearchResultItem(
+                        searchResult?.getOrNull(index),
+                        addedCities = addedCities,
+                        gotoWeatherPreviewPage = gotoWeatherPreviewPage
+                    )
                 }
             }
         }
@@ -284,11 +323,16 @@ private fun SelectCitySearchContent(
 }
 
 @Composable
-private fun SelectCityItem(cityData: CityData) {
+private fun SelectCityItem(
+    cityData: CityData,
+    addedCities: List<CityData>,
+    gotoWeatherPreviewPage: (CityData) -> Unit = {}
+) {
+    val hasAdded = addedCities.find { it.cityId == cityData.cityId } != null
     AppText(
         modifier = Modifier
             .bounceClick {
-                ToastUtils.show(cityData.name ?: "")
+                gotoWeatherPreviewPage(cityData)
             }
             .background(
                 colorResource(R.color.card_color_06),
@@ -296,23 +340,28 @@ private fun SelectCityItem(cityData: CityData) {
             )
             .padding(vertical = 8.dp),
         text = cityData.name ?: "",
-        color = colorResource(R.color.text_color_01),
+        color = colorResource(if (hasAdded) R.color.app_main else R.color.text_color_01),
         fontSize = 13.sp,
         textAlign = TextAlign.Center,
     )
 }
 
 @Composable
-private fun SearchResultItem(item: CityData?) {
+private fun SearchResultItem(
+    item: CityData?,
+    addedCities: List<CityData>,
+    gotoWeatherPreviewPage: (CityData) -> Unit = {}
+) {
+    val hasAdded = addedCities.find { it.cityId == item?.cityId } != null
     AppText(
         modifier = Modifier
             .alphaClick() {
-                ToastUtils.show(item?.name ?: "")
+                gotoWeatherPreviewPage(item ?: return@alphaClick)
             }
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 12.dp),
         text = if (item?.prov.isNullOrEmpty()) "${item?.name} - ${item?.country}" else "${item.name} - ${item.prov} - ${item.country}",
-        color = colorResource(R.color.text_color_01),
+        color = colorResource(if (hasAdded) R.color.app_main else R.color.text_color_01),
         fontSize = 15.sp,
         fontWeight = FontWeight.Bold,
     )

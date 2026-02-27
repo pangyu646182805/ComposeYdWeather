@@ -1,10 +1,14 @@
 package com.yd.weather.viewmodel
 
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavOptions
 import com.yd.weather.app.AppState
 import com.yd.weather.app.ViewState
+import com.yd.weather.navigation.AddCityResultKey
 import com.yd.weather.navigation.AppNavigator
 import com.yd.weather.navigation.NavigationResultKey
 import com.yd.weather.routes.RouteInterceptor
@@ -191,6 +195,23 @@ abstract class BaseViewModel(
         viewModelScope.launch {
             navigator.navigateToOrBackTo(route)
         }
+    }
+
+    fun observeAddCityResult(
+        backStackEntry: NavBackStackEntry?,
+        key: NavigationResultKey<String> = AddCityResultKey,
+        block: (String) -> Unit,
+    ) {
+        if (backStackEntry == null) return
+        val owner: LifecycleOwner = backStackEntry
+        backStackEntry.savedStateHandle
+            .getLiveData<String>(key.key)
+            .observe(owner, Observer<String> { value ->
+                if (value.isNotEmpty()) {
+                    block(value)
+                    backStackEntry.savedStateHandle[key.key] = ""
+                }
+            })
     }
 
     // ==================== 内部方法 ====================

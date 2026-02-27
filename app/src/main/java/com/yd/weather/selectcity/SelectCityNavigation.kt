@@ -8,6 +8,7 @@ import androidx.navigation.compose.composable
 import com.yd.weather.navigation.NavTransitions
 import com.yd.weather.routes.MainRoutes
 import com.yd.weather.routes.SelectCityRoutes
+import com.yd.weather.routes.WeatherPreviewRoutes
 
 @OptIn(ExperimentalSharedTransitionApi::class)
 fun NavGraphBuilder.selectCityScreen(navController: NavHostController) {
@@ -19,8 +20,20 @@ fun NavGraphBuilder.selectCityScreen(navController: NavHostController) {
                 NavTransitions.Fade.enter(this)
             }
         },
-        exitTransition = { NavTransitions.Fade.exit(this) },
-        popEnterTransition = { NavTransitions.Fade.enter(this) },
+        exitTransition = {
+            if (targetState.destination.hasRoute<WeatherPreviewRoutes.WeatherPreview>()) {
+                NavTransitions.None.exit(this)
+            } else {
+                NavTransitions.Fade.exit(this)
+            }
+        },
+        popEnterTransition = {
+            if (initialState.destination.hasRoute<WeatherPreviewRoutes.WeatherPreview>()) {
+                NavTransitions.None.enter(this)
+            } else {
+                NavTransitions.Fade.enter(this)
+            }
+        },
         popExitTransition = {
             if (targetState.destination.hasRoute<MainRoutes.Main>()) {
                 NavTransitions.SlideHorizontal.popExit(this)
@@ -30,6 +43,6 @@ fun NavGraphBuilder.selectCityScreen(navController: NavHostController) {
         },
     ) {
         val canPop = navController.previousBackStackEntry != null
-        SelectCityRoute(this@composable, canPop = canPop)
+        SelectCityRoute(navController, canPop = canPop)
     }
 }
