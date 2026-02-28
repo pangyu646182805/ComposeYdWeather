@@ -4,6 +4,7 @@ import com.yd.weather.db.model.CityData
 import com.yd.weather.model.LocationData
 import com.yd.weather.model.NetworkResponse
 import com.yd.weather.model.SelectCityData
+import com.yd.weather.model.WeatherData
 import javax.inject.Inject
 
 class WeatherNetworkDataSourceImpl @Inject constructor(
@@ -19,5 +20,9 @@ class WeatherNetworkDataSourceImpl @Inject constructor(
 
     override suspend fun searchCity(searchKey: String): NetworkResponse<List<CityData>> {
         return weatherService.searchCity(searchKey = searchKey)
+    }
+
+    override suspend fun obtainWeatherData(cityId: String): WeatherData {
+        return weatherService.obtainWeatherData(cityId = cityId)
     }
 }

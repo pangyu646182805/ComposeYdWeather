@@ -19,12 +19,10 @@ import com.yd.weather.net.ResultHandler
 import com.yd.weather.net.WeatherRepository
 import com.yd.weather.net.asResult
 import com.yd.weather.routes.WeatherPreviewRoutes
-import com.yd.weather.utils.AppRuntimeData
 import com.yd.weather.utils.LocationProvider
 import com.yd.weather.utils.MMKVUtils
 import com.yd.weather.utils.PermissionUtils
 import com.yd.weather.utils.ToastUtils
-import com.yd.weather.weatherpreview.WeatherPreviewRoute
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -220,7 +218,7 @@ class SelectCityViewModel @Inject constructor(
                     )
                 )
             }
-            AppRuntimeData.setCurrentCityData(cityData)
+            appState.setCurrentCityData(cityData)
             val cityId = if (isLocationCity) Constants.LOCATION_CITY_ID else cityData.cityId
             if (!cityId.isNullOrEmpty()) {
                 val currentCityIdList = MMKVUtils.getStringSet(Constants.CURRENT_CITY_ID_LIST)

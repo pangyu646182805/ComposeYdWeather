@@ -45,6 +45,7 @@ class SplashViewModel @Inject constructor(
             val currentCityId = MMKVUtils.getString(Constants.CURRENT_CITY_ID)
             if (!TextUtils.isEmpty(locationCity.cityId) || !TextUtils.isEmpty(currentCityId)) {
                 val currentCity = weatherDbRepository.getCityByCityId(currentCityId)
+                appState.setCurrentCityData(currentCity)
                 toMainPage()
             } else {
                 toSelectCityPage()

@@ -16,7 +16,48 @@ import java.net.SocketTimeoutException
 import java.net.UnknownHostException
 
 object ResultHandler {
-    fun <T> handleResult(
+    private fun <T> handleResultWithT(
+        scope: CoroutineScope,
+        flow: Flow<Result<T>>,
+        showToast: Boolean = true,
+        delayTimeMillis: Long? = null,
+        onLoading: () -> Unit = {},
+        onSuccessWithData: (T) -> Unit = {},
+        onError: (String, Throwable?) -> Unit = { _, _ -> },
+        onFinally: () -> Unit = {}
+    ) {
+        scope.launch {
+            delayTimeMillis?.let {
+                if (it > 0) delay(it)
+            }
+            try {
+                flow.collectLatest { result ->
+                    when (result) {
+                        is Result.Loading -> onLoading()
+                        is Result.Success -> onSuccessWithData(result.data)
+
+                        is Result.Error -> handleError(
+                            errorMsg = result.exception.message ?: "网络请求失败",
+                            throwable = result.exception,
+                            showToast = showToast,
+                            onError = onError
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                handleError(
+                    errorMsg = "请求处理异常",
+                    throwable = e,
+                    showToast = showToast,
+                    onError = onError
+                )
+            } finally {
+                onFinally()
+            }
+        }
+    }
+
+    private fun <T> handleResult(
         scope: CoroutineScope,
         flow: Flow<Result<NetworkResponse<T>>>,
         showToast: Boolean = true,
@@ -75,6 +116,28 @@ object ResultHandler {
         onFinally: () -> Unit = {}
     ) {
         handleResult(
+            scope = scope,
+            flow = flow,
+            delayTimeMillis = delayTimeMillis,
+            showToast = showToast,
+            onLoading = onLoading,
+            onSuccessWithData = onData,
+            onError = onError,
+            onFinally = onFinally
+        )
+    }
+
+    fun <T> handleResultWithT(
+        scope: CoroutineScope,
+        flow: Flow<Result<T>>,
+        delayTimeMillis: Long? = null,
+        showToast: Boolean = true,
+        onLoading: () -> Unit = {},
+        onData: (T) -> Unit,
+        onError: (String, Throwable?) -> Unit = { _, _ -> },
+        onFinally: () -> Unit = {}
+    ) {
+        handleResultWithT(
             scope = scope,
             flow = flow,
             delayTimeMillis = delayTimeMillis,

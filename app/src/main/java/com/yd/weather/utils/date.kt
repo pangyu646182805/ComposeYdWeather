@@ -28,6 +28,36 @@ fun Date.isSameDay(other: Date): Boolean {
 }
 
 /**
+ * 根据字符串内容推断日期格式：
+ *   8位纯数字  → yyyyMMdd    (e.g. "20250228")
+ *   10位纯数字 → yyyyMMddHH  (e.g. "2025022806")
+ *   HH:mm      → HH:mm       (e.g. "06:30")
+ */
+private fun inferDatePattern(dateStr: String): String? = when {
+    dateStr.matches(Regex("""\d{8}""")) -> "yyyyMMdd"
+    dateStr.matches(Regex("""\d{10}""")) -> "yyyyMMddHH"
+    dateStr.matches(Regex("""\d{12}""")) -> "yyyyMMddHHmm"
+    dateStr.matches(Regex("""\d{2}:\d{2}""")) -> "HH:mm"
+    else -> null
+}
+
+/**
+ * 日期字符串格式转换，自动推断 fromPattern，按 toPattern 格式化输出
+ */
+fun formatDateStr(dateStr: String?, toPattern: String): String? {
+    if (dateStr.isNullOrEmpty()) return null
+    val fromPattern = inferDatePattern(dateStr) ?: return null
+    return try {
+        val from = SimpleDateFormat(fromPattern, Locale.getDefault())
+        val to = SimpleDateFormat(toPattern, Locale.getDefault())
+        val date = from.parse(dateStr) ?: return null
+        to.format(date)
+    } catch (_: Exception) {
+        null
+    }
+}
+
+/**
  * 增加或减少天数
  */
 fun Date.addDays(days: Int): Date {
