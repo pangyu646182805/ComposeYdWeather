@@ -16,6 +16,8 @@ class WeatherDbDataSource @Inject constructor(
 
     suspend fun getCityByCityId(cityId: String): CityData? = weatherDao.getCityByCityId(cityId)
 
+    suspend fun getCityByKey(key: String): CityData? = weatherDao.getCityByKey(key)
+
     suspend fun upsertCity(cityData: CityData) = weatherDao.upsert(cityData)
 
     suspend fun deleteCity(cityData: CityData) = weatherDao.delete(cityData)

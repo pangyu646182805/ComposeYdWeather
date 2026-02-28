@@ -18,6 +18,9 @@ interface WeatherDao {
     @Query("SELECT * FROM city_data WHERE cityid = :cityId LIMIT 1")
     suspend fun getCityByCityId(cityId: String): CityData?
 
+    @Query("SELECT * FROM city_data WHERE `key` = :key LIMIT 1")
+    suspend fun getCityByKey(key: String): CityData?
+
     @Upsert
     suspend fun upsert(cityData: CityData)
 
