@@ -13,10 +13,12 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.TopAppBarColors
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 
 /**
  * 应用通用Scaffold组件
@@ -50,6 +52,8 @@ fun AppScaffold(
     modifier: Modifier = Modifier,
     title: Int? = null,
     titleText: String? = null,
+    titleAlpha: Float = 1f,
+    navigationIcon: @Composable (() -> Unit)? = null,
     topBarColors: TopAppBarColors = TopAppBarDefaults.topAppBarColors(),
     topBarActions: @Composable (RowScope.() -> Unit) = {},
     showBackIcon: Boolean = true,
@@ -68,6 +72,17 @@ fun AppScaffold(
         topBar = {
             if (topBar != null) {
                 topBar()
+            } else {
+                CenterTopAppBar(
+                    title = title,
+                    titleText = titleText,
+                    titleAlpha = titleAlpha,
+                    colors = topBarColors,
+                    actions = topBarActions,
+                    onBackClick = onBackClick,
+                    showBackIcon = showBackIcon,
+                    navigationIcon = navigationIcon
+                )
             }
         },
         snackbarHost = { SnackbarHost(snackBarHostState) },

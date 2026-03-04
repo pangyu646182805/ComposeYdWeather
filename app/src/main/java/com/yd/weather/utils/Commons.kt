@@ -47,4 +47,6 @@ object Commons {
         val formatDateStr = formatDateStr(time, "HH") ?: return false
         return sunriseOrSunset.startsWith(formatDateStr)
     }
+
+    fun getTemp(temp: Int?) = if (temp == null) "" else "${temp}°"
 }

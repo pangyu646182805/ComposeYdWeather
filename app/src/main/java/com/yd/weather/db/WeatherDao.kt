@@ -10,7 +10,10 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface WeatherDao {
     @Query("SELECT * FROM city_data ORDER BY `key` ASC")
-    fun getCities(): Flow<List<CityData>>
+    fun getCitiesFlow(): Flow<List<CityData>>
+
+    @Query("SELECT * FROM city_data ORDER BY `key` ASC")
+    suspend fun getCities(): List<CityData>
 
     @Query("SELECT * FROM city_data WHERE isLocationCity = 1 LIMIT 1")
     suspend fun getLocationCity(): CityData?

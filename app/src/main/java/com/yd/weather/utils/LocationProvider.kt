@@ -6,14 +6,28 @@ import android.location.Location
 import android.location.LocationManager
 import android.os.CancellationSignal
 import androidx.core.location.LocationManagerCompat
+import com.hjq.permissions.XXPermissions
+import com.hjq.permissions.permission.PermissionLists
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 
 class LocationProvider(private val context: Context) {
-    private val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+    private val locationManager =
+        context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
 
     @SuppressLint("MissingPermission")
     suspend fun fetchSingleLocation(): Location? = suspendCancellableCoroutine { continuation ->
+        val isGrantedPermissions = XXPermissions.isGrantedPermissions(
+            context,
+            listOf(
+                PermissionLists.getAccessFineLocationPermission(),
+                PermissionLists.getAccessCoarseLocationPermission()
+            )
+        )
+        if (!isGrantedPermissions) {
+            continuation.resume(null)
+            return@suspendCancellableCoroutine
+        }
         val isNetworkEnabled = locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
 
         if (!isNetworkEnabled) {

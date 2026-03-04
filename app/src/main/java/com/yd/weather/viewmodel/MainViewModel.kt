@@ -1,11 +1,14 @@
 package com.yd.weather.viewmodel
 
+import android.content.Context
 import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.viewModelScope
+import com.drake.logcat.LogCat
 import com.yd.weather.app.AppState
 import com.yd.weather.app.ViewState
 import com.yd.weather.config.Constants
 import com.yd.weather.db.WeatherDbRepository
+import com.yd.weather.db.model.CityData
 import com.yd.weather.db.model.fromWeatherData
 import com.yd.weather.model.WeatherData
 import com.yd.weather.model.WeatherItemData
@@ -13,11 +16,14 @@ import com.yd.weather.navigation.AppNavigator
 import com.yd.weather.net.ResultHandler
 import com.yd.weather.net.WeatherRepository
 import com.yd.weather.net.asResult
-import com.yd.weather.routes.SelectCityRoutes
+import com.yd.weather.utils.LocationProvider
+import com.yd.weather.utils.MMKVUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
 
 @HiltViewModel
@@ -26,6 +32,7 @@ class MainViewModel @Inject constructor(
     appState: AppState,
     private val weatherRepository: WeatherRepository,
     private val weatherDbRepository: WeatherDbRepository,
+    @param:ApplicationContext private val context: Context
 ) : BaseViewModel(navigator, appState) {
     private val _weatherBg = MutableStateFlow<List<Color>>(arrayListOf())
     val weatherBg: StateFlow<List<Color>> = _weatherBg
@@ -45,6 +52,11 @@ class MainViewModel @Inject constructor(
     private val _weatherItems = MutableStateFlow<List<WeatherItemData>?>(null)
     val weatherItems: StateFlow<List<WeatherItemData>?> = _weatherItems
 
+    private val _addedCityData = MutableStateFlow<List<CityData>?>(null)
+    val addedCityData: StateFlow<List<CityData>?> = _addedCityData
+
+    private var hasCheckLocationCity = false;
+
     init {
         val weatherData = appState.currentCityData.value?.weatherData
         generateWeatherBg(null, weatherData?.weatherType, weatherData?.sunrise, weatherData?.sunset)
@@ -55,6 +67,11 @@ class MainViewModel @Inject constructor(
         val isLocationCity = appState.currentCityData.value?.isLocationCity ?: false
         val currentCityId = appState.currentCityData.value?.cityId ?: ""
         val key = if (isLocationCity) Constants.LOCATION_CITY_ID else currentCityId
+        val weatherData = appState.getWeatherData(key)
+        if (weatherData != null) {
+            setViewState(ViewState.Success)
+            setWeatherData(weatherData)
+        }
         ResultHandler.handleResultWithT(
             scope = viewModelScope,
             flow = weatherRepository.obtainWeatherData(currentCityId).asResult(),
@@ -63,6 +80,12 @@ class MainViewModel @Inject constructor(
                 setViewState(ViewState.Success)
                 appState.saveWeatherData(key, data)
                 setWeatherData(data)
+                obtainAddedCityData()
+                checkLocationCity { reObtainWeatherData ->
+                    if (reObtainWeatherData) {
+                        obtainWeatherData()
+                    }
+                }
             },
             onError = { _, _ ->
                 setViewState(ViewState.Error)
@@ -81,6 +104,86 @@ class MainViewModel @Inject constructor(
                 )
             }
         }
+    }
+
+    private fun obtainAddedCityData() {
+        viewModelScope.launch {
+            val cities = weatherDbRepository.getCities()
+            val currentCityIdList = MMKVUtils.getStringSet(Constants.CURRENT_CITY_ID_LIST)
+            val list = arrayListOf<CityData>()
+            currentCityIdList.forEach { cityId ->
+                val find = cities.find { it.key == cityId }
+                if (find != null) {
+                    if (cityId == Constants.LOCATION_CITY_ID) {
+                        list.add(0, find)
+                    } else {
+                        list.add(find)
+                    }
+                }
+            }
+            _addedCityData.value = list
+        }
+    }
+
+    private fun checkLocationCity(block: (reObtainWeatherData: Boolean) -> Unit) {
+        if (!hasCheckLocationCity && appState.currentCityData.value?.isLocationCity ?: false) {
+            viewModelScope.launch {
+                val location = withTimeoutOrNull(10000L) {
+                    LocationProvider(context).fetchSingleLocation()
+                }
+                if (location != null) {
+                    hasCheckLocationCity = true
+                    ResultHandler.handleResultWithData(
+                        scope = viewModelScope,
+                        flow = weatherRepository.obtainLocationDataByLocation("${location.latitude},${location.longitude}")
+                            .asResult(),
+                        showToast = false,
+                        onData = { data ->
+                            val province = data.addressComponent?.province ?: ""
+                            if (appState.currentCityData.value?.name ==
+                                data.addressComponent?.district &&
+                                appState.currentCityData.value?.street ==
+                                data.addressComponent?.street &&
+                                (province.contains(appState.currentCityData.value?.prov ?: "") ||
+                                        (appState.currentCityData.value?.prov ?: "").contains(
+                                            province
+                                        ))
+                            ) {
+                                LogCat.e("定位位置相同")
+                            } else {
+                                searchCity(data.addressComponent?.district ?: "") { result ->
+                                    if (result.isNotEmpty()) {
+                                        val find = result.find {
+                                            it.name == data.addressComponent?.district && (province.contains(
+                                                it.prov ?: ""
+                                            ) || (it.prov ?: "").contains(province))
+                                        }
+                                        if (find != null) {
+                                            val cityData = find.copy(isLocationCity = true, street = data.addressComponent?.street)
+                                            viewModelScope.launch {
+                                                weatherDbRepository.upsertCity(cityData)
+                                                block.invoke(true)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                    )
+                }
+            }
+        }
+    }
+
+    private fun searchCity(searchKey: String, block: ((List<CityData>) -> Unit)? = null) {
+        ResultHandler.handleResultWithData(
+            scope = viewModelScope,
+            flow = weatherRepository.searchCity(searchKey).asResult(),
+            showToast = false,
+            onData = { data ->
+                block?.invoke(data)
+            },
+        )
     }
 
     private fun generateWeatherItems(weatherData: WeatherData?) {
@@ -113,7 +216,22 @@ class MainViewModel @Inject constructor(
         _panelOpacity.value = appState.calPanelOpacity(_weatherBg.value)
     }
 
-    fun toSelectCityPage() {
-        navigate(SelectCityRoutes.SelectCity)
+    fun swapAddedCityData(fromIndex: Int, toIndex: Int) {
+        val addedCityData = _addedCityData.value
+        if (addedCityData.isNullOrEmpty()) return
+        addedCityData.toMutableList().apply {
+            add(toIndex, removeAt(fromIndex))
+            _addedCityData.value = this
+        }
+    }
+
+    fun removeCityData(cityData: CityData?) {
+        if (cityData == null) return
+        val addedCityData = _addedCityData.value
+        if (addedCityData.isNullOrEmpty()) return
+        viewModelScope.launch {
+            weatherDbRepository.deleteCity(cityData)
+            _addedCityData.value = addedCityData.filter { it.cityId != cityData.cityId }
+        }
     }
 }

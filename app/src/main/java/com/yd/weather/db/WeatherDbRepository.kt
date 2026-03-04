@@ -10,7 +10,9 @@ import javax.inject.Singleton
 class WeatherDbRepository @Inject constructor(
     private val weatherDataSource: WeatherDbDataSource
 ) {
-    fun getCities(): Flow<List<CityData>> = weatherDataSource.getCities()
+    fun getCitiesFlow(): Flow<List<CityData>> = weatherDataSource.getCitiesFlow()
+
+    suspend fun getCities(): List<CityData> = weatherDataSource.getCities()
 
     suspend fun getLocationCity(): CityData? = weatherDataSource.getLocationCity()
 

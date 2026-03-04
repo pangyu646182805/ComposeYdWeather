@@ -46,7 +46,7 @@ class SelectCityViewModel @Inject constructor(
     private val _selectCityData = MutableStateFlow<SelectCityData?>(null)
     val selectCityData: StateFlow<SelectCityData?> = _selectCityData
 
-    private val _cities = weatherDbRepository.getCities()
+    private val _cities = weatherDbRepository.getCitiesFlow()
     val cities = _cities.stateIn(
         viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),

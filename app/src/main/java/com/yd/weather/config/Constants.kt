@@ -7,6 +7,8 @@ object Constants {
 
     const val MAX_CITY_LIST_LENGTH = 20
 
+    const val CITY_MANAGER_ITEM_HEIGHT = 98
+
     const val CURRENT_CITY_ID = "CURRENT_CITY_ID"
     const val CURRENT_CITY_ID_LIST = "CURRENT_CITY_ID_LIST"
     const val CURRENT_WEATHER_CARD_SORT = "CURRENT_WEATHER_CARD_SORT"

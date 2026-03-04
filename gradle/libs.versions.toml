@@ -28,6 +28,7 @@ loggingInterceptor = "5.3.2"
 toaster = "13.8"
 logcat = "1.2.4"
 xxpermissions = "28.0"
+reorderable = "3.0.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -64,6 +65,7 @@ retrofit2-kotlinx-serialization-converter = { module = "com.jakewharton.retrofit
 toaster = { group = "com.github.getActivity", name = "Toaster", version.ref = "toaster" }
 logcat = { module = "com.github.liangjingkanji:LogCat", version.ref = "logcat" }
 xxpermissions = { module = "com.github.getActivity:XXPermissions", version.ref = "xxpermissions" }
+reorderable = { module = "sh.calvin.reorderable:reorderable", version.ref = "reorderable" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

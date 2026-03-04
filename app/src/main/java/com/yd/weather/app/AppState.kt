@@ -231,14 +231,20 @@ class AppState @Inject constructor(
         return panelOpacity
     }
 
-    fun saveWeatherData(cityId: String, weatherData: WeatherData?) {
+    fun saveWeatherData(key: String, weatherData: WeatherData?) {
         if (weatherData != null) {
-            _weatherDataMap.value = _weatherDataMap.value.plus(cityId to weatherData)
-            MMKVUtils.putObject(cityId, weatherData)
+            _weatherDataMap.value = _weatherDataMap.value.plus(key to weatherData)
+            MMKVUtils.putObject(key, weatherData)
         } else {
-            _weatherDataMap.value -= cityId
-            MMKVUtils.putObject(cityId, null)
+            _weatherDataMap.value -= key
+            MMKVUtils.putObject(key, null)
         }
+    }
+
+    fun getWeatherData(key: String): WeatherData? {
+        val weatherData = _weatherDataMap.value[key]
+        if (weatherData != null) return weatherData
+        return MMKVUtils.getObject(key)
     }
 
     fun getItemTypeObserves(

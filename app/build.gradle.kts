@@ -131,4 +131,5 @@ dependencies {
     implementation(libs.toaster)
     implementation(libs.logcat)
     implementation(libs.xxpermissions)
+    implementation(libs.reorderable)
 }

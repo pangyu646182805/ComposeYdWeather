@@ -19,7 +19,13 @@ import com.yd.weather.routes.SelectCityRoutes
 fun NavGraphBuilder.mainScreen(sharedTransitionScope: SharedTransitionScope) {
     composable<MainRoutes.Main>(
         enterTransition = NavTransitions.Fade.enter,
-        exitTransition = NavTransitions.Fade.exit,
+        exitTransition = {
+            if (targetState.destination.hasRoute<SelectCityRoutes.SelectCity>()) {
+                NavTransitions.SlideHorizontal.exit(this)
+            } else {
+                NavTransitions.Fade.exit(this)
+            }
+        },
         popEnterTransition = {
             if (initialState.destination.hasRoute<SelectCityRoutes.SelectCity>()) {
                 NavTransitions.SlideHorizontal.popEnter(this)

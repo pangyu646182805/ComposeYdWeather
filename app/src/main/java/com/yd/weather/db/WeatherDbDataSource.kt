@@ -10,7 +10,9 @@ import javax.inject.Singleton
 class WeatherDbDataSource @Inject constructor(
     private val weatherDao: WeatherDao
 ) {
-    fun getCities(): Flow<List<CityData>> = weatherDao.getCities()
+    fun getCitiesFlow(): Flow<List<CityData>> = weatherDao.getCitiesFlow()
+
+    suspend fun getCities(): List<CityData> = weatherDao.getCities()
 
     suspend fun getLocationCity(): CityData? = weatherDao.getLocationCity()
 
