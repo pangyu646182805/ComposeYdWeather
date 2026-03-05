@@ -10,8 +10,12 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -78,6 +82,7 @@ internal fun SelectCityRoute(
         viewModel.observeAddCityResult(backStackEntry) { addCityId ->
             val addCityData = selectCityData?.hotNational?.find { it.cityId == addCityId }
                 ?: selectCityData?.hotInternational?.find { it.cityId == addCityId }
+                ?: searchResult?.find { it.cityId == addCityId }
             viewModel.addCity(addCityData)
         }
     }
@@ -308,7 +313,10 @@ private fun SelectCitySearchContent(
         ) {
             LazyColumn(
                 state = listState,
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(
+                    bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+                )
             ) {
                 items(searchResult?.size ?: 0) { index ->
                     SearchResultItem(

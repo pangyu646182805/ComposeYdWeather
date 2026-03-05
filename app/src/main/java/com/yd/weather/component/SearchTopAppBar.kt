@@ -122,6 +122,7 @@ fun SearchTopAppBar(
                         CommonIcon(
                             resId = R.mipmap.search_clear_normal,
                             size = 12.dp,
+                            tint = colorResource(R.color.color_999999),
                             modifier = Modifier
                                 .padding(end = 8.dp)
                                 .clickable { searchText = "" },

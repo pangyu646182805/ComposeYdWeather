@@ -1,16 +1,16 @@
 package com.yd.weather.viewmodel
 
-import androidx.lifecycle.viewModelScope
 import com.yd.weather.app.AppState
+import com.yd.weather.config.Constants
 import com.yd.weather.db.WeatherDbRepository
 import com.yd.weather.db.model.CityData
 import com.yd.weather.navigation.AppNavigator
 import com.yd.weather.net.WeatherRepository
 import com.yd.weather.routes.SelectCityRoutes
+import com.yd.weather.utils.MMKVUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
@@ -92,11 +92,36 @@ class CityManagerViewModel @Inject constructor(
         _selectedList.value = emptyList()
     }
 
-    fun toSelectCityPage() {
-        navigate(SelectCityRoutes.SelectCity)
+    fun toSelectCityPage(replace: Boolean = false) {
+        if (replace) {
+            navigateToOrBackTo(SelectCityRoutes.SelectCity)
+        } else {
+            navigate(SelectCityRoutes.SelectCity)
+        }
     }
 
     fun changeDeleteButtonEnable(enable: Boolean) {
         _deleteButtonEnable.value = enable
+    }
+
+    fun refreshCurrentCityIdList(removeItems: List<CityData>) {
+        val currentCityIdList =
+            MMKVUtils.getStringSet(Constants.CURRENT_CITY_ID_LIST).toMutableSet()
+        removeItems.forEach { removeItem ->
+            currentCityIdList.removeIf { it == removeItem.cityId }
+            appState.saveWeatherData(removeItem.key, null)
+        }
+        MMKVUtils.putStringSet(Constants.CURRENT_CITY_ID_LIST, currentCityIdList)
+    }
+
+    fun afterRemove(resetCurrentCityData: Boolean, addedCityData: List<CityData>?) {
+        if (addedCityData.isNullOrEmpty()) {
+            MMKVUtils.putString(Constants.CURRENT_CITY_ID, "")
+            toSelectCityPage(replace = true)
+        } else {
+            if (resetCurrentCityData) {
+                appState.setCurrentCityData(addedCityData.firstOrNull())
+            }
+        }
     }
 }

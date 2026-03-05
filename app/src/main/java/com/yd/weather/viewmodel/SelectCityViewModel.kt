@@ -218,7 +218,11 @@ class SelectCityViewModel @Inject constructor(
                     )
                 )
             }
-            appState.setCurrentCityData(cityData)
+            appState.setCurrentCityData(
+                cityData.copy(
+                    key = if (isLocationCity) Constants.LOCATION_CITY_ID else cityData.cityId ?: ""
+                )
+            )
             val cityId = if (isLocationCity) Constants.LOCATION_CITY_ID else cityData.cityId
             if (!cityId.isNullOrEmpty()) {
                 val currentCityIdList = MMKVUtils.getStringSet(Constants.CURRENT_CITY_ID_LIST)

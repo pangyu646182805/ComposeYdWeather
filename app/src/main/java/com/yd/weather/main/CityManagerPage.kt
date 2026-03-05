@@ -2,20 +2,27 @@ package com.yd.weather.main
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -41,6 +48,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.colorResource
@@ -52,7 +60,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.drake.logcat.LogCat
 import com.yd.weather.R
 import com.yd.weather.app.AppState
-import com.yd.weather.component.AppColumn
 import com.yd.weather.component.AppRow
 import com.yd.weather.component.AppScaffold
 import com.yd.weather.component.AppText
@@ -69,9 +76,9 @@ import com.yd.weather.config.Constants
 import com.yd.weather.db.model.CityData
 import com.yd.weather.res.CommonIcon
 import com.yd.weather.utils.Commons
+import com.yd.weather.utils.ObserveListAddition
 import com.yd.weather.utils.getToday
 import com.yd.weather.viewmodel.CityManagerViewModel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import sh.calvin.reorderable.ReorderableCollectionItemScope
 import sh.calvin.reorderable.ReorderableItem
@@ -81,14 +88,23 @@ import sh.calvin.reorderable.rememberReorderableLazyListState
 fun CityManagerPage(
     addedCities: List<CityData>? = null,
     swap: (fromIndex: Int, toIndex: Int) -> Unit,
-    removeCityData: (cityData: CityData?) -> Unit,
+    onSwapDragStopped: () -> Unit = {},
+    removeCityData: (cityData: CityData?, block: () -> Unit) -> Unit,
+    removeCities: (cities: List<CityData>?, block: () -> Unit) -> Unit,
     viewModel: CityManagerViewModel = hiltViewModel()
 ) {
+    val scope = rememberCoroutineScope()
     val isEditMode by viewModel.isEditMode.collectAsStateWithLifecycle()
     val selectedList by viewModel.selectedList.collectAsStateWithLifecycle()
     val deleteButtonEnable by viewModel.deleteButtonEnable.collectAsStateWithLifecycle()
     val scrollState = rememberLazyListState()
     val density = LocalDensity.current
+
+    ObserveListAddition(addedCities) {
+        scope.launch {
+            scrollState.animateScrollToItem(addedCities?.size ?: 0)
+        }
+    }
 
     val stickyHeaderHeightPx = with(density) { 60.dp.toPx() }
 
@@ -121,7 +137,10 @@ fun CityManagerPage(
             }
         },
         topBarActions = {
-            RightIcon(isEditMode = isEditMode) {
+            RightIcon(
+                isEditMode = isEditMode,
+                isSelectedAll = viewModel.isSelectedAll(addedCities)
+            ) {
                 if (isEditMode) {
                     if (viewModel.isSelectedAll(addedCities)) {
                         viewModel.clearSelected()
@@ -142,16 +161,23 @@ fun CityManagerPage(
                 isSelected = { cityData ->
                     viewModel.isSelected(cityData)
                 },
-                selectedList = selectedList,
                 scrollState = scrollState,
                 headerAlpha = headerAlpha,
                 headerTitle = title,
                 swap = swap,
+                onSwapDragStopped = onSwapDragStopped,
                 toEditMode = { cityData ->
                     viewModel.toEditMode(addedCities?.size ?: 0, cityData)
                 },
                 removeItem = { cityData ->
-                    removeCityData(cityData)
+                    cityData ?: return@CityList
+                    removeCityData(cityData) {
+                        viewModel.refreshCurrentCityIdList(listOf(cityData))
+                        viewModel.afterRemove(
+                            cityData.cityId == viewModel.appState().currentCityData.value?.cityId,
+                            addedCities
+                        )
+                    }
                 },
                 onItemClick = { cityData ->
                     if (cityData == null) return@CityList
@@ -166,7 +192,17 @@ fun CityManagerPage(
             BottomOperateButton(
                 isEditMode = isEditMode,
                 hasSelected = viewModel.hasSelected(),
-                deleteButtonEnable = deleteButtonEnable
+                deleteButtonEnable = deleteButtonEnable,
+                removeItems = {
+                    removeCities(selectedList.toList()) {
+                        val appState = viewModel.appState()
+                        val resetCurrentCityData =
+                            selectedList.find { removeItem -> removeItem.cityId == appState.currentCityData.value?.cityId } != null
+                        viewModel.refreshCurrentCityIdList(selectedList)
+                        viewModel.closeEditMode()
+                        viewModel.afterRemove(resetCurrentCityData, addedCities)
+                    }
+                }
             )
         }
     }
@@ -184,12 +220,12 @@ fun LeftIcon(isEditMode: Boolean = false, onClick: () -> Unit) {
 }
 
 @Composable
-fun RightIcon(isEditMode: Boolean = false, onClick: () -> Unit) {
+fun RightIcon(isEditMode: Boolean = false, isSelectedAll: Boolean = false, onClick: () -> Unit) {
     IconButton(onClick = onClick) {
         CommonIcon(
             resId = if (isEditMode) R.mipmap.ic_select_all_icon else R.mipmap.ic_search_icon,
             size = 20.dp,
-            tint = colorResource(R.color.black),
+            tint = colorResource(if (isEditMode && isSelectedAll) R.color.app_main else R.color.black),
         )
     }
 }
@@ -200,11 +236,11 @@ fun CityList(
     appState: AppState,
     isEditMode: Boolean = false,
     isSelected: (cityData: CityData?) -> Boolean = { false },
-    selectedList: List<CityData> = emptyList(),
     scrollState: LazyListState,
     headerAlpha: Float = 1f,
     headerTitle: String = "",
     swap: (fromIndex: Int, toIndex: Int) -> Unit,
+    onSwapDragStopped: () -> Unit = {},
     toEditMode: (cityData: CityData?) -> Unit,
     removeItem: (cityData: CityData?) -> Unit,
     onItemClick: (cityData: CityData?) -> Unit,
@@ -222,16 +258,22 @@ fun CityList(
         hapticFeedback.performHapticFeedback(HapticFeedbackType.SegmentFrequentTick)
     }
 
+    LaunchedEffect(scrollState.isScrollInProgress) {
+        if (scrollState.isScrollInProgress) openedItemKey = null
+    }
+
     LazyColumn(
         state = scrollState,
         modifier = Modifier
-            .fillMaxSize()
-            .navigationBarsPadding(),
+            .fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(12.dp),
-        contentPadding = PaddingValues(bottom = if (isEditMode) 54.dp else 0.dp)
+        contentPadding = PaddingValues(
+            bottom = WindowInsets.navigationBars.asPaddingValues()
+                .calculateBottomPadding() + if (isEditMode) 66.dp else 12.dp
+        )
     ) {
         item {
-            CityManagerHeader(isEditMode, selectedList, headerAlpha, headerTitle)
+            CityManagerHeader(headerAlpha, headerTitle)
         }
         items(addedCities?.size ?: 0, key = { index ->
             val item = addedCities?.getOrNull(index)
@@ -272,6 +314,7 @@ fun CityList(
                     onSwapDragStarted = {
                         openedItemKey = null
                     },
+                    onSwapDragStopped = onSwapDragStopped,
                     toEditMode = toEditMode,
                     removeItem = {
                         openedItemKey = null
@@ -286,8 +329,6 @@ fun CityList(
 
 @Composable
 fun CityManagerHeader(
-    isEditMode: Boolean,
-    selectedList: List<CityData>,
     headerAlpha: Float,
     headerTitle: String
 ) {
@@ -314,6 +355,7 @@ fun ReorderableCollectionItemScope.CityManagerItem(
     onDragStarted: () -> Unit = {},
     onDragStopped: () -> Unit = {},
     onSwapDragStarted: () -> Unit = {},
+    onSwapDragStopped: () -> Unit = {},
     changeDeleteButtonEnable: (enable: Boolean) -> Unit = {},
     toEditMode: (cityData: CityData?) -> Unit,
     removeItem: (cityData: CityData?) -> Unit
@@ -324,6 +366,16 @@ fun ReorderableCollectionItemScope.CityManagerItem(
         item?.weatherData?.weatherType ?: "",
         Commons.isNight(getToday(), item?.weatherData?.sunrise, item?.weatherData?.sunset),
         true
+    )
+    val startColor by animateColorAsState(
+        targetValue = weatherBg[0],
+        animationSpec = spring(stiffness = Spring.StiffnessLow),
+        label = "startColor"
+    )
+    val endColor by animateColorAsState(
+        targetValue = weatherBg[1],
+        animationSpec = spring(stiffness = Spring.StiffnessLow),
+        label = "endColor"
     )
     val isDark = appState.isDark(weatherBg)
 
@@ -341,6 +393,7 @@ fun ReorderableCollectionItemScope.CityManagerItem(
 
     val onDragHandleStopped = {
         changeDeleteButtonEnable(true)
+        onSwapDragStopped()
         hapticFeedback.performHapticFeedback(HapticFeedbackType.GestureEnd)
     }
 
@@ -360,7 +413,6 @@ fun ReorderableCollectionItemScope.CityManagerItem(
                     .clickable {
                         scope.launch {
                             swipeRevealState.close()
-                            delay(200)
                             removeItem(item)
                         }
                     },
@@ -379,14 +431,24 @@ fun ReorderableCollectionItemScope.CityManagerItem(
                     .bounceClick(scalePressed = 0.9f) {
                         onItemClick(item)
                     }
-                    .longPressDraggableHandle(
-                        onDragStarted = onDragHandleStarted,
-                        onDragStopped = onDragHandleStopped
+                    .then(
+                        if (item?.isLocationCity ?: false) {
+                            Modifier.pointerInput(Unit) {
+                                detectTapGestures(
+                                    onLongPress = onDragHandleStarted
+                                )
+                            }
+                        } else {
+                            Modifier.longPressDraggableHandle(
+                                onDragStarted = onDragHandleStarted,
+                                onDragStopped = onDragHandleStopped
+                            )
+                        }
                     )
                     .fillMaxWidth()
                     .height(Constants.CITY_MANAGER_ITEM_HEIGHT.dp)
                     .background(
-                        brush = Brush.verticalGradient(colors = weatherBg),
+                        brush = Brush.verticalGradient(colors = listOf(startColor, endColor)),
                         shape = RoundedCornerShape(16.dp)
                     )
             ) {
@@ -504,7 +566,8 @@ fun ReorderableCollectionItemScope.EditItem(
 fun BottomOperateButton(
     isEditMode: Boolean = false,
     hasSelected: Boolean = false,
-    deleteButtonEnable: Boolean = false
+    deleteButtonEnable: Boolean = false,
+    removeItems: () -> Unit
 ) {
     AnimatedVisibility(
         visible = isEditMode,
@@ -514,8 +577,9 @@ fun BottomOperateButton(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .navigationBarsPadding()
                 .background(colorResource(R.color.bg_color))
+                .navigationBarsPadding()
+                .pointerInput(Unit) {}
         ) {
             Box(
                 modifier = Modifier
@@ -525,7 +589,7 @@ fun BottomOperateButton(
             ) {
                 WrapColumn(
                     modifier = if (hasSelected && deleteButtonEnable) Modifier
-                        .alphaClick {} else Modifier.alpha(0.3f),
+                        .alphaClick(onClick = removeItems) else Modifier.alpha(0.3f),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     CommonIcon(

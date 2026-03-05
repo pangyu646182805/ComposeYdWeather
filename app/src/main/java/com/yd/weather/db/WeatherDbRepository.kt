@@ -16,13 +16,16 @@ class WeatherDbRepository @Inject constructor(
 
     suspend fun getLocationCity(): CityData? = weatherDataSource.getLocationCity()
 
-    suspend fun getCityByCityId(cityId: String): CityData? = weatherDataSource.getCityByCityId(cityId)
+    suspend fun getCityByCityId(cityId: String): CityData? =
+        weatherDataSource.getCityByCityId(cityId)
 
     suspend fun getCityByKey(key: String): CityData? = weatherDataSource.getCityByKey(key)
 
     suspend fun upsertCity(cityData: CityData) = weatherDataSource.upsertCity(cityData)
 
     suspend fun deleteCity(cityData: CityData) = weatherDataSource.deleteCity(cityData)
+
+    suspend fun deleteCities(cities: List<CityData>) = weatherDataSource.deleteCities(cities)
 
     suspend fun deleteCityById(id: Long) = weatherDataSource.deleteCityById(id)
 

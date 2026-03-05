@@ -24,6 +24,8 @@ class WeatherDbDataSource @Inject constructor(
 
     suspend fun deleteCity(cityData: CityData) = weatherDao.delete(cityData)
 
+    suspend fun deleteCities(cities: List<CityData>) = weatherDao.deleteCities(cities)
+
     suspend fun deleteCityById(id: Long) = weatherDao.deleteById(id)
 
     suspend fun updateWeatherData(cityData: CityData, weatherData: SimpleWeatherData) {

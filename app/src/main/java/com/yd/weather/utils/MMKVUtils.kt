@@ -370,7 +370,7 @@ object MMKVUtils {
      * @author Joker.X
      */
     fun getStringSet(key: String, defaultValue: Set<String> = emptySet()): Set<String> {
-        return defaultMMKV.decodeStringSet(key, defaultValue) ?: defaultValue
+        return defaultMMKV.decodeStringSet(key, defaultValue, LinkedHashSet::class.java) ?: defaultValue
     }
 
     /**

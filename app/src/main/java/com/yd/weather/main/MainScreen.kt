@@ -37,8 +37,14 @@ internal fun MainRoute(
         swap = { fromIndex, toIndex ->
             viewModel.swapAddedCityData(fromIndex, toIndex)
         },
-        removeCityData = { cityData ->
-            viewModel.removeCityData(cityData)
+        onSwapDragStopped = {
+            viewModel.onSwapDragStopped()
+        },
+        removeCityData = { cityData, block ->
+            viewModel.removeCityData(cityData, block)
+        },
+        removeCities = { cities, block ->
+            viewModel.removeCities(cities, block)
         }
     )
 }
@@ -50,13 +56,17 @@ internal fun MainScreen(
     weatherItems: List<WeatherItemData>? = null,
     addedCities: List<CityData>? = null,
     swap: (fromIndex: Int, toIndex: Int) -> Unit = { _, _ -> },
-    removeCityData: (cityData: CityData?) -> Unit = {},
+    onSwapDragStopped: () -> Unit = {},
+    removeCityData: (cityData: CityData?, block: () -> Unit) -> Unit = { _, _ -> },
+    removeCities: (cities: List<CityData>?, block: () -> Unit) -> Unit = { _, _ -> },
 ) {
     Box(modifier = Modifier.fillMaxSize()) {
         CityManagerPage(
             addedCities = addedCities,
             swap = swap,
-            removeCityData = removeCityData
+            onSwapDragStopped = onSwapDragStopped,
+            removeCityData = removeCityData,
+            removeCities = removeCities
         )
 
         WeatherPage()

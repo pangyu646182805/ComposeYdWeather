@@ -30,6 +30,9 @@ interface WeatherDao {
     @Delete
     suspend fun delete(cityData: CityData)
 
+    @Delete
+    suspend fun deleteCities(cities: List<CityData>)
+
     @Query("DELETE FROM city_data WHERE `key` = :key")
     suspend fun deleteById(key: Long)
 }

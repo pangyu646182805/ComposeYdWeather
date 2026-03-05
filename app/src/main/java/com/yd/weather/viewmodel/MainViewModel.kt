@@ -22,6 +22,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
@@ -61,6 +62,12 @@ class MainViewModel @Inject constructor(
         val weatherData = appState.currentCityData.value?.weatherData
         generateWeatherBg(null, weatherData?.weatherType, weatherData?.sunrise, weatherData?.sunset)
         obtainWeatherData()
+        viewModelScope.launch {
+            appState.currentCityData.drop(1).collect {
+                println("obtainWeatherData obtainWeatherData")
+                obtainWeatherData()
+            }
+        }
     }
 
     fun obtainWeatherData() {
@@ -80,7 +87,6 @@ class MainViewModel @Inject constructor(
                 setViewState(ViewState.Success)
                 appState.saveWeatherData(key, data)
                 setWeatherData(data)
-                obtainAddedCityData()
                 checkLocationCity { reObtainWeatherData ->
                     if (reObtainWeatherData) {
                         obtainWeatherData()
@@ -103,6 +109,7 @@ class MainViewModel @Inject constructor(
                     weatherData.fromWeatherData()
                 )
             }
+            obtainAddedCityData()
         }
     }
 
@@ -159,7 +166,10 @@ class MainViewModel @Inject constructor(
                                             ) || (it.prov ?: "").contains(province))
                                         }
                                         if (find != null) {
-                                            val cityData = find.copy(isLocationCity = true, street = data.addressComponent?.street)
+                                            val cityData = find.copy(
+                                                isLocationCity = true,
+                                                street = data.addressComponent?.street
+                                            )
                                             viewModelScope.launch {
                                                 weatherDbRepository.upsertCity(cityData)
                                                 block.invoke(true)
@@ -225,13 +235,34 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    fun removeCityData(cityData: CityData?) {
+    fun onSwapDragStopped() {
+        val currentCityIdList = _addedCityData.value?.map {
+            if (it.isLocationCity) Constants.LOCATION_CITY_ID else it.cityId ?: ""
+        }
+        if (!currentCityIdList.isNullOrEmpty()) {
+            MMKVUtils.putStringSet(Constants.CURRENT_CITY_ID_LIST, currentCityIdList.toMutableSet())
+        }
+    }
+
+    fun removeCityData(cityData: CityData?, block: () -> Unit) {
         if (cityData == null) return
         val addedCityData = _addedCityData.value
         if (addedCityData.isNullOrEmpty()) return
         viewModelScope.launch {
             weatherDbRepository.deleteCity(cityData)
             _addedCityData.value = addedCityData.filter { it.cityId != cityData.cityId }
+            block()
+        }
+    }
+
+    fun removeCities(cities: List<CityData>?, block: () -> Unit) {
+        if (cities.isNullOrEmpty()) return
+        val addedCityData = _addedCityData.value
+        if (addedCityData.isNullOrEmpty()) return
+        viewModelScope.launch {
+            weatherDbRepository.deleteCities(cities)
+            _addedCityData.value = addedCityData.filter { !cities.contains(it) }
+            block()
         }
     }
 }
