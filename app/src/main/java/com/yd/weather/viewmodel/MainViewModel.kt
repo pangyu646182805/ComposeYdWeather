@@ -88,7 +88,9 @@ class MainViewModel @Inject constructor(
         ResultHandler.handleResultWithT(
             scope = viewModelScope,
             flow = weatherRepository.obtainWeatherData(currentCityId).asResult(),
-            onLoading = { setViewState(ViewState.Loading) },
+            onLoading = {
+                if (weatherData == null) setViewState(ViewState.Loading)
+            },
             onData = { data ->
                 setViewState(ViewState.Success)
                 appState.saveWeatherData(key, data)

@@ -87,7 +87,10 @@ fun WeatherPage(
                 )
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
-                MultipleStatusView(viewState = viewState) {
+                MultipleStatusView(
+                    viewState = viewState,
+                    loadingColor = colorResource(if (isDark) R.color.color_white else R.color.color_black)
+                ) {
                     WeatherContentList(
                         weatherScrollState = weatherScrollState,
                         isShowWeatherPage = isShowWeatherPage,

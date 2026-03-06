@@ -7,6 +7,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import com.yd.weather.res.YdWeatherAppTheme
 
@@ -18,7 +19,8 @@ import com.yd.weather.res.YdWeatherAppTheme
  */
 @Composable
 fun PageLoading(
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    color: Color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
 ) {
     Column(
         modifier = modifier.fillMaxSize(),
@@ -26,7 +28,7 @@ fun PageLoading(
         verticalArrangement = Arrangement.Center
     ) {
         MiLoadingMobile(
-            borderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+            borderColor = color
         )
     }
 }

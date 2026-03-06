@@ -8,8 +8,10 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import com.yd.weather.app.ViewState
 
 @Composable
@@ -17,6 +19,7 @@ fun MultipleStatusView(
     viewState: ViewState,
     modifier: Modifier = Modifier,
     padding: PaddingValues = PaddingValues(),
+    loadingColor: Color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
     customLoading: @Composable (() -> Unit)? = null,
     customError: @Composable (() -> Unit)? = null,
     content: @Composable () -> Unit
@@ -39,7 +42,7 @@ fun MultipleStatusView(
                     if (customLoading != null) {
                         customLoading()
                     } else {
-                        PageLoading()
+                        PageLoading(color = loadingColor)
                     }
                 }
 
