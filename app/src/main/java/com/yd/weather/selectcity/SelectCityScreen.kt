@@ -226,11 +226,11 @@ private fun SelectCityGridContent(
             Box(modifier = Modifier.padding(top = 12.dp)) {
                 WrapRow(
                     modifier = Modifier
-                        .bounceClick {
+                        .bounceClick(onClick = {
                             if (locationData == null && locationState == 1) {
                                 obtainLocationPermission.invoke()
                             }
-                        }
+                        })
                         .background(
                             colorResource(R.color.card_color_06),
                             RoundedCornerShape(percent = 50)
@@ -339,9 +339,9 @@ private fun SelectCityItem(
     val hasAdded = addedCities.find { it.cityId == cityData.cityId } != null
     AppText(
         modifier = Modifier
-            .bounceClick {
+            .bounceClick(onClick = {
                 gotoWeatherPreviewPage(cityData)
-            }
+            })
             .background(
                 colorResource(R.color.card_color_06),
                 RoundedCornerShape(percent = 50)

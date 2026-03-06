@@ -153,7 +153,7 @@ fun SwipeRevealLayout(
                                                 )
                                             } else {
                                                 val target =
-                                                    if (snap < -maxSwipePx * 0.5f) -maxSwipePx else 0f
+                                                    if (snap < -maxSwipePx * 0.3f) -maxSwipePx else 0f
                                                 offsetX.animateTo(
                                                     targetValue = target,
                                                     animationSpec = spring(

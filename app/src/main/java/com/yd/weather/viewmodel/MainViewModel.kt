@@ -1,6 +1,7 @@
 package com.yd.weather.viewmodel
 
 import android.content.Context
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.viewModelScope
 import com.drake.logcat.LogCat
@@ -35,6 +36,9 @@ class MainViewModel @Inject constructor(
     private val weatherDbRepository: WeatherDbRepository,
     @param:ApplicationContext private val context: Context
 ) : BaseViewModel(navigator, appState) {
+    private val _isShowWeatherPage = MutableStateFlow(true)
+    val isShowWeatherPage: StateFlow<Boolean> = _isShowWeatherPage
+
     private val _weatherBg = MutableStateFlow<List<Color>>(arrayListOf())
     val weatherBg: StateFlow<List<Color>> = _weatherBg
 
@@ -56,7 +60,9 @@ class MainViewModel @Inject constructor(
     private val _addedCityData = MutableStateFlow<List<CityData>?>(null)
     val addedCityData: StateFlow<List<CityData>?> = _addedCityData
 
-    private var hasCheckLocationCity = false;
+    private var hasCheckLocationCity = false
+
+    var offsetY = 0f
 
     init {
         val weatherData = appState.currentCityData.value?.weatherData
@@ -263,6 +269,41 @@ class MainViewModel @Inject constructor(
             weatherDbRepository.deleteCities(cities)
             _addedCityData.value = addedCityData.filter { !cities.contains(it) }
             block()
+        }
+    }
+
+    fun showCityManagerPage(cityManagerViewModel: CityManagerViewModel, cityManagerScrollState: LazyListState) {
+        val addedCityData = _addedCityData.value
+        if (addedCityData.isNullOrEmpty()) return
+        val currentCityData = appState.currentCityData.value ?: return
+        val fullyVisibleIndices = cityManagerViewModel.fullyVisibleIndices
+        viewModelScope.launch {
+            val index = addedCityData.indexOfFirst { it.cityId == currentCityData.cityId }
+            if (index >= 0) {
+                if (!fullyVisibleIndices.contains(index + 1)) {
+                    cityManagerScrollState.scrollToItem(index + 1)
+                }
+                cityManagerScrollState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == index + 1 }?.let { itemInfo ->
+                    this@MainViewModel.offsetY = itemInfo.offset + cityManagerViewModel.listOffsetY
+                }
+                _isShowWeatherPage.value = false
+            }
+        }
+    }
+
+    fun showWeatherPage(cityManagerViewModel: CityManagerViewModel, cityManagerScrollState: LazyListState) {
+        val addedCityData = _addedCityData.value
+        if (addedCityData.isNullOrEmpty()) return
+        val currentCityData = appState.currentCityData.value ?: return
+        viewModelScope.launch {
+            val index = addedCityData.indexOfFirst { it.cityId == currentCityData.cityId }
+            if (index >= 0) {
+                val itemInfo = cityManagerScrollState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == index + 1 }
+                if (itemInfo != null) {
+                    this@MainViewModel.offsetY = itemInfo.offset + cityManagerViewModel.listOffsetY
+                }
+                _isShowWeatherPage.value = true
+            }
         }
     }
 }

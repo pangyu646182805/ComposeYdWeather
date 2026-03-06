@@ -5,14 +5,15 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -49,6 +50,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionOnScreen
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.colorResource
@@ -79,6 +82,7 @@ import com.yd.weather.utils.Commons
 import com.yd.weather.utils.ObserveListAddition
 import com.yd.weather.utils.getToday
 import com.yd.weather.viewmodel.CityManagerViewModel
+import com.yd.weather.viewmodel.MainViewModel
 import kotlinx.coroutines.launch
 import sh.calvin.reorderable.ReorderableCollectionItemScope
 import sh.calvin.reorderable.ReorderableItem
@@ -86,18 +90,17 @@ import sh.calvin.reorderable.rememberReorderableLazyListState
 
 @Composable
 fun CityManagerPage(
+    isShowWeatherPage: Boolean = true,
     addedCities: List<CityData>? = null,
-    swap: (fromIndex: Int, toIndex: Int) -> Unit,
-    onSwapDragStopped: () -> Unit = {},
-    removeCityData: (cityData: CityData?, block: () -> Unit) -> Unit,
-    removeCities: (cities: List<CityData>?, block: () -> Unit) -> Unit,
+    scrollState: LazyListState = rememberLazyListState(),
+    mainViewModel: MainViewModel = hiltViewModel(),
     viewModel: CityManagerViewModel = hiltViewModel()
 ) {
     val scope = rememberCoroutineScope()
     val isEditMode by viewModel.isEditMode.collectAsStateWithLifecycle()
     val selectedList by viewModel.selectedList.collectAsStateWithLifecycle()
     val deleteButtonEnable by viewModel.deleteButtonEnable.collectAsStateWithLifecycle()
-    val scrollState = rememberLazyListState()
+    val itemAlpha by viewModel.itemAlpha.collectAsStateWithLifecycle()
     val density = LocalDensity.current
 
     ObserveListAddition(addedCities) {
@@ -124,6 +127,36 @@ fun CityManagerPage(
 
     BackHandler(enabled = isEditMode) {
         viewModel.closeEditMode()
+    }
+
+    BackHandler(enabled = !isEditMode && !isShowWeatherPage) {
+        mainViewModel.showWeatherPage(viewModel, scrollState)
+    }
+
+    val fullyVisibleIndices by remember {
+        derivedStateOf {
+            val layoutInfo = scrollState.layoutInfo
+            val visibleItemsInfo = layoutInfo.visibleItemsInfo
+
+            if (visibleItemsInfo.isEmpty()) {
+                emptyList()
+            } else {
+                visibleItemsInfo
+                    .filter { itemInfo ->
+                        val itemStart = itemInfo.offset
+                        val itemEnd = itemInfo.offset + itemInfo.size
+                        val viewportStart = layoutInfo.viewportStartOffset
+                        val viewportEnd = layoutInfo.viewportEndOffset
+                        // 判断是否完全可见
+                        itemStart >= viewportStart && itemEnd <= viewportEnd
+                    }
+                    .map { it.index }
+            }
+        }
+    }
+
+    LaunchedEffect(fullyVisibleIndices) {
+        viewModel.fullyVisibleIndices = fullyVisibleIndices
     }
 
     AppScaffold(
@@ -153,7 +186,15 @@ fun CityManagerPage(
             }
         }
     ) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .onGloballyPositioned {
+                    viewModel.listOffsetY = it.positionOnScreen().y
+                    viewModel.listHeight = it.size.height
+                    println("listHeight = ${viewModel.listHeight}")
+                }, contentAlignment = Alignment.BottomCenter
+        ) {
             CityList(
                 addedCities = addedCities,
                 appState = viewModel.appState(),
@@ -164,14 +205,14 @@ fun CityManagerPage(
                 scrollState = scrollState,
                 headerAlpha = headerAlpha,
                 headerTitle = title,
-                swap = swap,
-                onSwapDragStopped = onSwapDragStopped,
+                swap = mainViewModel::swapAddedCityData,
+                onSwapDragStopped = mainViewModel::onSwapDragStopped,
                 toEditMode = { cityData ->
                     viewModel.toEditMode(addedCities?.size ?: 0, cityData)
                 },
                 removeItem = { cityData ->
                     cityData ?: return@CityList
-                    removeCityData(cityData) {
+                    mainViewModel.removeCityData(cityData) {
                         viewModel.refreshCurrentCityIdList(listOf(cityData))
                         viewModel.afterRemove(
                             cityData.cityId == viewModel.appState().currentCityData.value?.cityId,
@@ -183,18 +224,27 @@ fun CityManagerPage(
                     if (cityData == null) return@CityList
                     if (isEditMode) {
                         viewModel.selected(cityData)
+                    } else {
+                        val appState = viewModel.appState()
+                        if (cityData.cityId != appState.currentCityData.value?.cityId) {
+                            appState.setCurrentCityData(cityData)
+                        }
+                        mainViewModel.showWeatherPage(viewModel, scrollState)
                     }
                 },
                 changeDeleteButtonEnable = { enable ->
                     viewModel.changeDeleteButtonEnable(enable)
-                }
+                },
+                startIndex = viewModel.startIndex,
+                endIndex = viewModel.endIndex,
+                itemAlpha = itemAlpha
             )
             BottomOperateButton(
                 isEditMode = isEditMode,
                 hasSelected = viewModel.hasSelected(),
                 deleteButtonEnable = deleteButtonEnable,
                 removeItems = {
-                    removeCities(selectedList.toList()) {
+                    mainViewModel.removeCities(selectedList.toList()) {
                         val appState = viewModel.appState()
                         val resetCurrentCityData =
                             selectedList.find { removeItem -> removeItem.cityId == appState.currentCityData.value?.cityId } != null
@@ -245,6 +295,9 @@ fun CityList(
     removeItem: (cityData: CityData?) -> Unit,
     onItemClick: (cityData: CityData?) -> Unit,
     changeDeleteButtonEnable: (enable: Boolean) -> Unit = {},
+    startIndex: Int = 0,
+    endIndex: Int = 0,
+    itemAlpha: Float = 0f
 ) {
     // 当前正在拖拽的 item index，null 表示无 item 在拖拽
     var draggingIndex by remember { mutableStateOf<Int?>(null) }
@@ -303,7 +356,13 @@ fun CityList(
                     enabled = !isEditMode && !isLocationCity && (draggingIndex == null || draggingIndex == index),
                     isEditMode = isEditMode,
                     isSelected = isSelected(item),
-                    onItemClick = onItemClick,
+                    onItemClick = {
+                        if (openedItemKey != null) {
+                            openedItemKey = null
+                        } else {
+                            onItemClick(it)
+                        }
+                    },
                     onDragStarted = {
                         draggingIndex = index
                         openedItemKey = itemKey
@@ -320,7 +379,11 @@ fun CityList(
                         openedItemKey = null
                         removeItem(it)
                     },
-                    changeDeleteButtonEnable = changeDeleteButtonEnable
+                    changeDeleteButtonEnable = changeDeleteButtonEnable,
+                    index = index,
+                    startIndex = startIndex,
+                    endIndex = endIndex,
+                    itemAlpha = itemAlpha
                 )
             }
         }
@@ -358,7 +421,11 @@ fun ReorderableCollectionItemScope.CityManagerItem(
     onSwapDragStopped: () -> Unit = {},
     changeDeleteButtonEnable: (enable: Boolean) -> Unit = {},
     toEditMode: (cityData: CityData?) -> Unit,
-    removeItem: (cityData: CityData?) -> Unit
+    removeItem: (cityData: CityData?) -> Unit,
+    index: Int = 0,
+    startIndex: Int = 0,
+    endIndex: Int = 0,
+    itemAlpha: Float = 0f
 ) {
     val scope = rememberCoroutineScope()
     val hapticFeedback = LocalHapticFeedback.current
@@ -397,6 +464,31 @@ fun ReorderableCollectionItemScope.CityManagerItem(
         hapticFeedback.performHapticFeedback(HapticFeedbackType.GestureEnd)
     }
 
+    fun calDuration(): Int {
+        if (startIndex <= 0 && endIndex <= 0) {
+            return 0
+        }
+        if (startIndex > endIndex) {
+            if (index !in endIndex..startIndex) {
+                return 0
+            }
+            val fixedIndex = startIndex - index
+            return fixedIndex * 60 + 10
+        } else {
+            if (index !in startIndex..endIndex) {
+                return 0
+            }
+            val fixedIndex = index - startIndex
+            return fixedIndex * 60 + 10
+        }
+    }
+
+    val itemAlpha by animateFloatAsState(
+        targetValue = itemAlpha,
+        animationSpec = tween(durationMillis = calDuration()),
+        label = "itemAlpha"
+    )
+
     SwipeRevealLayout(
         modifier = Modifier.padding(horizontal = 16.dp),
         revealWidth = 65.dp,
@@ -428,25 +520,24 @@ fun ReorderableCollectionItemScope.CityManagerItem(
         content = {
             Box(
                 modifier = Modifier
-                    .bounceClick(scalePressed = 0.9f) {
+                    .bounceClick(scalePressed = 0.9f, onClick = {
                         onItemClick(item)
-                    }
+                    }, onLongClick = {
+                        onDragHandleStarted(Offset.Zero)
+                    })
                     .then(
-                        if (item?.isLocationCity ?: false) {
-                            Modifier.pointerInput(Unit) {
-                                detectTapGestures(
-                                    onLongPress = onDragHandleStarted
-                                )
-                            }
-                        } else {
+                        if (!(item?.isLocationCity ?: false)) {
                             Modifier.longPressDraggableHandle(
                                 onDragStarted = onDragHandleStarted,
                                 onDragStopped = onDragHandleStopped
                             )
+                        } else {
+                            Modifier
                         }
                     )
                     .fillMaxWidth()
                     .height(Constants.CITY_MANAGER_ITEM_HEIGHT.dp)
+                    .alpha(itemAlpha)
                     .background(
                         brush = Brush.verticalGradient(colors = listOf(startColor, endColor)),
                         shape = RoundedCornerShape(16.dp)
@@ -471,7 +562,7 @@ fun ReorderableCollectionItemScope.CityManagerItem(
 fun CityItem(
     item: CityData?,
     isEditMode: Boolean = false,
-    isDark: Boolean = false,
+    isDark: Boolean = false
 ) {
     val isLocationCity = item?.isLocationCity ?: false
     val title = {

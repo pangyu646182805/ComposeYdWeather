@@ -5,6 +5,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -22,7 +23,8 @@ import kotlinx.coroutines.launch
 
 fun Modifier.bounceClick(
     scalePressed: Float = 1.1f,
-    onClick: () -> Unit = {}
+    onClick: () -> Unit = {},
+    onLongClick: (() -> Unit)? = null
 ): Modifier = composed {
     // 1. 定义交互状态
     var isPressed by remember { mutableStateOf(false) }
@@ -44,10 +46,11 @@ fun Modifier.bounceClick(
             scaleX = scale
             scaleY = scale
         }
-        .clickable(
+        .combinedClickable(
             interactionSource = remember { MutableInteractionSource() },
             indication = null, // 设为 null 隐藏系统自带的灰色涟漪，只保留缩放反馈
-            onClick = onClick
+            onClick = onClick,
+            onLongClick = onLongClick
         )
         .pointerInput(Unit) {
             // 3. 核心：监听底层指针事件

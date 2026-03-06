@@ -86,6 +86,7 @@ fun AppScaffold(
                 )
             }
         },
+        containerColor = backgroundColor,
         snackbarHost = { SnackbarHost(snackBarHostState) },
         bottomBar = bottomBar,
         floatingActionButton = floatingActionButton,

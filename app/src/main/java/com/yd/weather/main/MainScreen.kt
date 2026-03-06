@@ -5,10 +5,12 @@ import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -17,6 +19,8 @@ import com.yd.weather.component.AppScaffold
 import com.yd.weather.db.model.CityData
 import com.yd.weather.model.WeatherItemData
 import com.yd.weather.res.YdWeatherAppTheme
+import com.yd.weather.utils.SetStatusBarStyle
+import com.yd.weather.viewmodel.CityManagerViewModel
 import com.yd.weather.viewmodel.MainViewModel
 
 @OptIn(ExperimentalSharedTransitionApi::class)
@@ -24,28 +28,27 @@ import com.yd.weather.viewmodel.MainViewModel
 internal fun MainRoute(
     sharedTransitionScope: SharedTransitionScope,
     animatedContentScope: AnimatedContentScope,
-    viewModel: MainViewModel = hiltViewModel()
+    mainViewModel: MainViewModel = hiltViewModel(),
+    cityManagerViewModel: CityManagerViewModel = hiltViewModel()
 ) {
-    val viewState by viewModel.viewState.collectAsState()
-    val weatherItems by viewModel.weatherItems.collectAsStateWithLifecycle()
-    val addedCities by viewModel.addedCityData.collectAsStateWithLifecycle()
+    val viewState by mainViewModel.viewState.collectAsState()
+    val isShowWeatherPage by mainViewModel.isShowWeatherPage.collectAsStateWithLifecycle()
+    val weatherItems by mainViewModel.weatherItems.collectAsStateWithLifecycle()
+    val addedCities by mainViewModel.addedCityData.collectAsStateWithLifecycle()
+    val weatherBg by mainViewModel.weatherBg.collectAsStateWithLifecycle()
+    val isWeatherHeaderDark by mainViewModel.isWeatherHeaderDark.collectAsStateWithLifecycle()
+    val isDark by mainViewModel.isDark.collectAsStateWithLifecycle()
 
     MainScreen(
         viewState = viewState,
+        isShowWeatherPage = isShowWeatherPage,
         weatherItems = weatherItems,
+        weatherBg = weatherBg,
+        isWeatherHeaderDark = isWeatherHeaderDark,
+        isDark = isDark,
         addedCities = addedCities,
-        swap = { fromIndex, toIndex ->
-            viewModel.swapAddedCityData(fromIndex, toIndex)
-        },
-        onSwapDragStopped = {
-            viewModel.onSwapDragStopped()
-        },
-        removeCityData = { cityData, block ->
-            viewModel.removeCityData(cityData, block)
-        },
-        removeCities = { cities, block ->
-            viewModel.removeCities(cities, block)
-        }
+        mainViewModel = mainViewModel,
+        cityManagerViewModel = cityManagerViewModel
     )
 }
 
@@ -53,23 +56,38 @@ internal fun MainRoute(
 @Composable
 internal fun MainScreen(
     viewState: ViewState = ViewState.Loading,
+    isShowWeatherPage: Boolean = true,
     weatherItems: List<WeatherItemData>? = null,
+    weatherBg: List<Color> = emptyList(),
+    isWeatherHeaderDark: Boolean = false,
+    isDark: Boolean = false,
     addedCities: List<CityData>? = null,
-    swap: (fromIndex: Int, toIndex: Int) -> Unit = { _, _ -> },
-    onSwapDragStopped: () -> Unit = {},
-    removeCityData: (cityData: CityData?, block: () -> Unit) -> Unit = { _, _ -> },
-    removeCities: (cities: List<CityData>?, block: () -> Unit) -> Unit = { _, _ -> },
+    mainViewModel: MainViewModel = hiltViewModel(),
+    cityManagerViewModel: CityManagerViewModel = hiltViewModel()
 ) {
+    val cityManagerScrollState = rememberLazyListState()
+    SetStatusBarStyle(isLight = if (isShowWeatherPage) !isWeatherHeaderDark else true)
+
     Box(modifier = Modifier.fillMaxSize()) {
         CityManagerPage(
+            isShowWeatherPage = isShowWeatherPage,
+            scrollState = cityManagerScrollState,
             addedCities = addedCities,
-            swap = swap,
-            onSwapDragStopped = onSwapDragStopped,
-            removeCityData = removeCityData,
-            removeCities = removeCities
+            mainViewModel = mainViewModel,
+            viewModel = cityManagerViewModel
         )
 
-        WeatherPage()
+        WeatherPage(
+            viewState = viewState,
+            cityManagerScrollState = cityManagerScrollState,
+            isShowWeatherPage = isShowWeatherPage,
+            addedCities = addedCities,
+            weatherBg = weatherBg,
+            isWeatherHeaderDark = isWeatherHeaderDark,
+            isDark = isDark,
+            mainViewModel = mainViewModel,
+            cityManagerViewModel = cityManagerViewModel
+        )
     }
 }
 

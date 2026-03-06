@@ -1,5 +1,6 @@
 package com.yd.weather.viewmodel
 
+import androidx.compose.foundation.lazy.LazyListState
 import com.yd.weather.app.AppState
 import com.yd.weather.config.Constants
 import com.yd.weather.db.WeatherDbRepository
@@ -29,6 +30,19 @@ class CityManagerViewModel @Inject constructor(
     private val _deleteButtonEnable = MutableStateFlow(true)
     val deleteButtonEnable: StateFlow<Boolean> = _deleteButtonEnable
 
+    private val _itemAlpha = MutableStateFlow(0f)
+    val itemAlpha: StateFlow<Float> = _itemAlpha
+
+    var startIndex = 0
+
+    var endIndex = 0
+
+    var listOffsetY = 0f
+
+    var listHeight = 0
+
+    var fullyVisibleIndices = emptyList<Int>()
+
     fun appState(): AppState = _appState
 
     fun closeEditMode() {
@@ -57,7 +71,7 @@ class CityManagerViewModel @Inject constructor(
     }
 
     fun selected(cityData: CityData?) {
-        if (cityData == null) return
+        if (cityData == null || cityData.isLocationCity) return
         val findIndex = _selectedList.value.indexOfFirst { it.cityId == cityData.cityId }
         if (findIndex >= 0) {
             _selectedList.value.toMutableList().apply {
@@ -123,5 +137,33 @@ class CityManagerViewModel @Inject constructor(
                 appState.setCurrentCityData(addedCityData.firstOrNull())
             }
         }
+    }
+
+    fun showCityList(addedCityData: List<CityData>?, cityManagerScrollState: LazyListState) {
+        if (addedCityData.isNullOrEmpty()) return
+        val currentCityData = appState.currentCityData.value ?: return
+        val index = addedCityData.indexOfFirst { it.cityId == currentCityData.cityId }
+        if (index >= 0) {
+            val visibleItemsInfo = cityManagerScrollState.layoutInfo.visibleItemsInfo
+            val visibleIndices = visibleItemsInfo.map { it.index - 1 }
+            if (visibleIndices.isNotEmpty()) {
+                val itemInfo = visibleItemsInfo.firstOrNull { it.index == index + 1 }
+                val itemOffsetY = itemInfo?.offset ?: 0
+                if (itemOffsetY > listHeight * 0.5f) {
+                    startIndex = visibleIndices.last()
+                    endIndex = visibleIndices.first()
+                } else {
+                    startIndex = visibleIndices.first()
+                    endIndex = visibleIndices.last()
+                }
+                _itemAlpha.value = 1f
+            }
+        }
+    }
+
+    fun hideCityList() {
+        startIndex = 0
+        endIndex = 0
+        _itemAlpha.value = 0f
     }
 }
