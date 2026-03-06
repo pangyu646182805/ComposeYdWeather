@@ -166,6 +166,8 @@ fun CityManagerPage(
             LeftIcon(isEditMode = isEditMode) {
                 if (isEditMode) {
                     viewModel.closeEditMode()
+                } else {
+                    mainViewModel.showWeatherPage(viewModel, scrollState)
                 }
             }
         },
