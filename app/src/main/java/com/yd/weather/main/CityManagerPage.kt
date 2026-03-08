@@ -446,7 +446,7 @@ fun ReorderableCollectionItemScope.CityManagerItem(
         animationSpec = spring(stiffness = Spring.StiffnessLow),
         label = "endColor"
     )
-    val isDark = appState.isDark(weatherBg)
+    val isDark = appState.isWeatherHeaderDark(weatherBg)
 
     val onDragHandleStarted = { _: Offset ->
         changeDeleteButtonEnable(false)

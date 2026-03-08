@@ -175,11 +175,13 @@ class MainViewModel @Inject constructor(
                                         }
                                         if (find != null) {
                                             val cityData = find.copy(
+                                                key = Constants.LOCATION_CITY_ID,
                                                 isLocationCity = true,
                                                 street = data.addressComponent?.street
                                             )
                                             viewModelScope.launch {
                                                 weatherDbRepository.upsertCity(cityData)
+                                                appState.setCurrentCityData(cityData)
                                                 block.invoke(true)
                                             }
                                         }

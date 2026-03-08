@@ -8,6 +8,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowInsetsControllerCompat
 
@@ -33,4 +35,13 @@ fun SetStatusBarStyle(isLight: Boolean) {
             isAppearanceLightStatusBars = isLight
         }
     }
+}
+
+fun Color.isLight(): Boolean {
+    val luminance = luminance()
+    val kThreshold = 0.15f
+    if ((luminance + 0.05) * (luminance + 0.05) > kThreshold) {
+        return true
+    }
+    return false
 }

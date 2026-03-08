@@ -15,6 +15,7 @@ import com.yd.weather.utils.Commons
 import com.yd.weather.utils.MMKVUtils
 import com.yd.weather.utils.WeatherBgUtils
 import com.yd.weather.utils.getToday
+import com.yd.weather.utils.isLight
 import com.yd.weather.utils.toDateString
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
@@ -209,12 +210,12 @@ class AppState @Inject constructor(
 
     fun isWeatherHeaderDark(weatherBg: List<Color>?): Boolean {
         if (weatherBg.isNullOrEmpty()) return false
-        return weatherBg.first().luminance() < 0.5f
+        return !weatherBg.first().isLight()
     }
 
     fun isDark(weatherBg: List<Color>?): Boolean {
         if (weatherBg.isNullOrEmpty()) return false
-        return weatherBg[1].luminance() < 0.5f
+        return !weatherBg[1].isLight()
     }
 
     fun calPanelOpacity(weatherBg: List<Color>?): Float {
