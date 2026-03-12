@@ -19,6 +19,7 @@ import com.yd.weather.net.ResultHandler
 import com.yd.weather.net.WeatherRepository
 import com.yd.weather.net.asResult
 import com.yd.weather.routes.WeatherPreviewRoutes
+import com.yd.weather.utils.CoordinateConverter
 import com.yd.weather.utils.LocationProvider
 import com.yd.weather.utils.MMKVUtils
 import com.yd.weather.utils.PermissionUtils
@@ -114,9 +115,10 @@ class SelectCityViewModel @Inject constructor(
     }
 
     private fun obtainLocationDataByLocation(location: Location) {
+        val transform = CoordinateConverter.wgs84ToGcj02(location.longitude, location.latitude)
         ResultHandler.handleResultWithData(
             scope = viewModelScope,
-            flow = weatherRepository.obtainLocationDataByLocation("${location.latitude},${location.longitude}")
+            flow = weatherRepository.obtainLocationDataByLocation("${transform[1]},${transform[0]}")
                 .asResult(),
             onData = { data ->
                 _locationData.value = data

@@ -37,6 +37,7 @@ private fun inferDatePattern(dateStr: String): String? = when {
     dateStr.matches(Regex("""\d{8}""")) -> "yyyyMMdd"
     dateStr.matches(Regex("""\d{10}""")) -> "yyyyMMddHH"
     dateStr.matches(Regex("""\d{12}""")) -> "yyyyMMddHHmm"
+    dateStr.matches(Regex("""\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}""")) -> "yyyy-MM-dd HH:mm:ss"
     dateStr.matches(Regex("""\d{2}:\d{2}""")) -> "HH:mm"
     else -> null
 }
@@ -54,6 +55,19 @@ fun formatDateStr(dateStr: String?, toPattern: String): String? {
         to.format(date)
     } catch (_: Exception) {
         null
+    }
+}
+
+/**
+ * 日期字符串转 Date 对象，自动推断格式；无法推断时返回 null
+ */
+fun getFormatDate(dateStr: String): Date {
+    if (dateStr.isEmpty()) return Date()
+    val pattern = inferDatePattern(dateStr) ?: return Date()
+    return try {
+        SimpleDateFormat(pattern, Locale.getDefault()).parse(dateStr)
+    } catch (_: Exception) {
+        Date()
     }
 }
 

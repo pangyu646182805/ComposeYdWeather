@@ -10,6 +10,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.takeOrElse
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextLayoutResult
@@ -161,6 +162,7 @@ fun AppText(
     onTextLayout: (TextLayoutResult) -> Unit = {},
     onClick: (() -> Unit)? = null,
     style: TextStyle? = null,
+    shadow: Shadow? = null,
     selectable: Boolean = false
 ) {
     // 根据类型设置颜色
@@ -183,7 +185,8 @@ fun AppText(
         letterSpacing = letterSpacing,
         textDecoration = textDecoration,
         textAlign = textAlign,
-        lineHeight = lineHeight
+        lineHeight = lineHeight,
+        shadow = shadow
     )
 
     // 处理可点击状态

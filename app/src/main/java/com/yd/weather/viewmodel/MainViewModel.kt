@@ -17,6 +17,7 @@ import com.yd.weather.navigation.AppNavigator
 import com.yd.weather.net.ResultHandler
 import com.yd.weather.net.WeatherRepository
 import com.yd.weather.net.asResult
+import com.yd.weather.utils.CoordinateConverter
 import com.yd.weather.utils.LocationProvider
 import com.yd.weather.utils.MMKVUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -31,11 +32,11 @@ import javax.inject.Inject
 @HiltViewModel
 class MainViewModel @Inject constructor(
     navigator: AppNavigator,
-    appState: AppState,
+    private val _appState: AppState,
     private val weatherRepository: WeatherRepository,
     private val weatherDbRepository: WeatherDbRepository,
     @param:ApplicationContext private val context: Context
-) : BaseViewModel(navigator, appState) {
+) : BaseViewModel(navigator, _appState) {
     private val _isShowWeatherPage = MutableStateFlow(true)
     val isShowWeatherPage: StateFlow<Boolean> = _isShowWeatherPage
 
@@ -63,6 +64,8 @@ class MainViewModel @Inject constructor(
     private var hasCheckLocationCity = false
 
     var offsetY = 0f
+
+    fun appState(): AppState = _appState
 
     init {
         val weatherData = appState.currentCityData.value?.weatherData
@@ -102,7 +105,7 @@ class MainViewModel @Inject constructor(
                 }
             },
             onError = { _, _ ->
-                setViewState(ViewState.Error)
+                // setViewState(ViewState.Error)
             }
         )
     }
@@ -148,9 +151,10 @@ class MainViewModel @Inject constructor(
                 }
                 if (location != null) {
                     hasCheckLocationCity = true
+                    val transform = CoordinateConverter.wgs84ToGcj02(location.longitude, location.latitude)
                     ResultHandler.handleResultWithData(
                         scope = viewModelScope,
-                        flow = weatherRepository.obtainLocationDataByLocation("${location.latitude},${location.longitude}")
+                        flow = weatherRepository.obtainLocationDataByLocation("${transform[1]},${transform[0]}")
                             .asResult(),
                         showToast = false,
                         onData = { data ->

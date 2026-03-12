@@ -38,6 +38,8 @@ internal fun MainRoute(
     val weatherBg by mainViewModel.weatherBg.collectAsStateWithLifecycle()
     val isWeatherHeaderDark by mainViewModel.isWeatherHeaderDark.collectAsStateWithLifecycle()
     val isDark by mainViewModel.isDark.collectAsStateWithLifecycle()
+    val panelOpacity by mainViewModel.panelOpacity.collectAsStateWithLifecycle()
+    val currentCityData by mainViewModel.appState().currentCityData.collectAsStateWithLifecycle()
 
     MainScreen(
         viewState = viewState,
@@ -47,6 +49,7 @@ internal fun MainRoute(
         isWeatherHeaderDark = isWeatherHeaderDark,
         isDark = isDark,
         addedCities = addedCities,
+        currentCityData = currentCityData,
         mainViewModel = mainViewModel,
         cityManagerViewModel = cityManagerViewModel
     )
@@ -61,7 +64,9 @@ internal fun MainScreen(
     weatherBg: List<Color> = emptyList(),
     isWeatherHeaderDark: Boolean = false,
     isDark: Boolean = false,
+    panelOpacity: Float = 0.1f,
     addedCities: List<CityData>? = null,
+    currentCityData: CityData? = null,
     mainViewModel: MainViewModel = hiltViewModel(),
     cityManagerViewModel: CityManagerViewModel = hiltViewModel()
 ) {
@@ -85,6 +90,9 @@ internal fun MainScreen(
             weatherBg = weatherBg,
             isWeatherHeaderDark = isWeatherHeaderDark,
             isDark = isDark,
+            panelOpacity = panelOpacity,
+            weatherItems = weatherItems,
+            currentCityData = currentCityData,
             mainViewModel = mainViewModel,
             cityManagerViewModel = cityManagerViewModel
         )

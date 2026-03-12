@@ -15,7 +15,7 @@ data class WeatherData(
     @SerialName("forecast40_v2")
     val forecast40V2: WeatherForecast40Data? = null,
     val forecast40: List<WeatherDetailData>? = null,
-    val env: WeatherEnvData? = null,
+    val evn: WeatherEnvData? = null,
     val indexes: List<WeatherIndexData>? = null,
     val alarms: List<WeatherAlarmsData>? = null,
     val observe: WeatherObserveData? = null,

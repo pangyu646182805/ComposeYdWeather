@@ -314,12 +314,12 @@ class AppState @Inject constructor(
         }
         return weatherItems.filter { weatherItem ->
             val itemType = weatherItem.itemType
-            val removeAlarmsPanel = itemType == Constants.ITEM_TYPE_ALARMS && weatherData?.alarms.isNullOrEmpty()
-            val removeAirQualityPanel = itemType == Constants.ITEM_TYPE_AIR_QUALITY && weatherData?.env == null
+            val removeAlarmsPanel = itemType == Constants.ITEM_TYPE_ALARMS && newWeatherData?.alarms.isNullOrEmpty()
+            val removeAirQualityPanel = itemType == Constants.ITEM_TYPE_AIR_QUALITY && newWeatherData?.evn == null
             val removeHourPanel = itemType == Constants.ITEM_TYPE_HOUR_WEATHER && newWeatherData?.hourFc.isNullOrEmpty()
-            val removeDailyPanel = itemType == Constants.ITEM_TYPE_DAILY_WEATHER && weatherData?.forecast15.isNullOrEmpty()
+            val removeDailyPanel = itemType == Constants.ITEM_TYPE_DAILY_WEATHER && newWeatherData?.forecast15.isNullOrEmpty()
             val removeObservePanel = itemType == Constants.ITEM_TYPE_OBSERVE && itemTypeObserves.isNullOrEmpty()
-            val removeLifeIndexPanel = itemType == Constants.ITEM_TYPE_LIFE_INDEX && weatherData?.indexes.isNullOrEmpty()
+            val removeLifeIndexPanel = itemType == Constants.ITEM_TYPE_LIFE_INDEX && newWeatherData?.indexes.isNullOrEmpty()
             !removeAlarmsPanel && !removeAirQualityPanel && !removeHourPanel &&
                     !removeDailyPanel && !removeObservePanel && !removeLifeIndexPanel
         }
