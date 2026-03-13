@@ -238,6 +238,8 @@ fun WeatherContentList(
                             )
 
                             Constants.ITEM_TYPE_HOUR_WEATHER -> WeatherHourPanel(
+                                item = item,
+                                index = index,
                                 isDark = isDark,
                                 panelOpacity = panelOpacity,
                                 firstItemOffset = firstItemOffset,

@@ -46,7 +46,8 @@ fun WeatherHeaderWidget(
 ) {
     val maxHeight = Constants.WEATHER_HEADER_MAX_HEIGHT
     val minHeight = Constants.WEATHER_HEADER_MIN_HEIGHT
-    val fixedWeatherHeaderOffset = if (firstVisibleItemIndex == 0) weatherHeaderOffset else (maxHeight - minHeight).toFloat()
+    val fixedWeatherHeaderOffset =
+        if (firstVisibleItemIndex == 0) weatherHeaderOffset else (maxHeight - minHeight).toFloat()
     val percent =
         fixedWeatherHeaderOffset / (maxHeight - minHeight)
 
@@ -112,14 +113,19 @@ fun WeatherHeaderWidget(
                         fontFamily = FontFamily(Font(R.font.roboto_thin, weight = FontWeight.Thin)),
                         shadow = textShadow
                     )
-                    AppText(
-                        text = "°",
-                        fontSize = 86.sp,
-                        color = colorResource(if (isWeatherHeaderDark) R.color.color_white else R.color.color_black),
-                        fontFamily = FontFamily(Font(R.font.roboto_thin, weight = FontWeight.Thin)),
-                        shadow = textShadow
-                    )
-                    Spacer(modifier = Modifier.weight(1f))
+                    Box(
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        AppText(
+                            text = "°",
+                            fontSize = 86.sp,
+                            color = colorResource(if (isWeatherHeaderDark) R.color.color_white else R.color.color_black),
+                            fontFamily = FontFamily(
+                                Font(R.font.roboto_thin, weight = FontWeight.Thin)
+                            ),
+                            shadow = textShadow
+                        )
+                    }
                 }
                 AppRow(
                     modifier = Modifier.alpha(opacity2),
