@@ -22,7 +22,7 @@ fun WeatherLifeIndexPanel(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(Constants.ITEM_OBSERVE_PANEL_HEIGHT.dp)
+            .height(288.dp)
             .background(
                 colorResource(if (isDark) R.color.color_white else R.color.color_black).copy(alpha = panelOpacity),
                 shape = RoundedCornerShape(Constants.ITEM_PANEL_RADIUS.dp)

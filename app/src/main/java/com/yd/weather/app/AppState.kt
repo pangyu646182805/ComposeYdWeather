@@ -356,7 +356,7 @@ class AppState @Inject constructor(
                 sunsetIndex + 1,
                 WeatherHourData(
                     time = currentWeatherDetailData?.sunset,
-                    sunriseAndSunset = SunriseAndSunset(sunrise = currentWeatherDetailData?.sunset)
+                    sunriseAndSunset = SunriseAndSunset(sunset = currentWeatherDetailData?.sunset)
                 )
             )
         }

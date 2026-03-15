@@ -89,23 +89,24 @@ internal fun Swiper(
         ) { page ->
             AlarmItem(alarms[page], titleOpacity = titleOpacity, timeOpacity = timeOpacity)
         }
-        WrapRow(modifier = Modifier.padding(bottom = 10.dp)) {
-            repeat(alarms.size) { iteration ->
-                val isSelected = pagerState.currentPage == iteration
-                val color =
-                    colorResource(R.color.color_white).copy(alpha = if (isSelected) 1f else 0.5f)
-                if (iteration > 0) {
-                    HorizontalSpace(width = 3.dp)
+        if (alarms.size >= 2)
+            WrapRow(modifier = Modifier.padding(bottom = 10.dp)) {
+                repeat(alarms.size) { iteration ->
+                    val isSelected = pagerState.currentPage == iteration
+                    val color =
+                        colorResource(R.color.color_white).copy(alpha = if (isSelected) 1f else 0.5f)
+                    if (iteration > 0) {
+                        HorizontalSpace(width = 3.dp)
+                    }
+                    Box(
+                        modifier = Modifier
+                            .width(if (isSelected) 6.dp else 3.dp)
+                            .height(2.dp)
+                            .clip(CircleShape)
+                            .background(color)
+                    )
                 }
-                Box(
-                    modifier = Modifier
-                        .width(if (isSelected) 6.dp else 3.dp)
-                        .height(2.dp)
-                        .clip(CircleShape)
-                        .background(color)
-                )
             }
-        }
     }
 }
 

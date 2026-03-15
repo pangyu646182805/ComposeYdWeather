@@ -1,5 +1,6 @@
 package com.yd.weather.utils
 
+import com.yd.weather.R
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
@@ -103,4 +104,45 @@ object Commons {
             set(Calendar.SECOND, 0)
             set(Calendar.MILLISECOND, 0)
         }
+
+    private val WEEK_DAYS = arrayOf("周日", "周一", "周二", "周三", "周四", "周五", "周六")
+
+    fun getWeatherDateTime(date: String?): String {
+        if (date.isNullOrEmpty()) return ""
+        val dateTime = getFormatDate(date)
+        val today = getToday()
+        return when {
+            dateTime.isSameDay(today.addDays(-1)) -> "昨天"
+            dateTime.isSameDay(today) -> "今天"
+            dateTime.isSameDay(today.addDays(1)) -> "明天"
+            else -> {
+                val cal = Calendar.getInstance().apply { time = dateTime }
+                WEEK_DAYS[cal.get(Calendar.DAY_OF_WEEK) - 1]
+            }
+        }
+    }
+
+    fun isBefore(date: String?): Boolean {
+        if (date.isNullOrEmpty()) return false
+        val dateTime = getFormatDate(date)
+        val todayStart = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }.time
+        return dateTime.before(todayStart)
+    }
+
+    fun getAqiColor(aqi: Int?): Int {
+        val value = aqi ?: 0
+        return when {
+            value <= 50 -> R.color.color_00e301
+            value <= 100 -> R.color.color_fdfd01
+            value <= 150 -> R.color.color_fd7e01
+            value <= 200 -> R.color.color_f70001
+            value <= 300 -> R.color.color_98004c
+            else -> R.color.color_7d0023
+        }
+    }
 }

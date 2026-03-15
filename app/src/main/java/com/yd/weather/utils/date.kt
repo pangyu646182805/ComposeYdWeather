@@ -20,6 +20,16 @@ fun getToday() = Date()
 /**
  * 快速判断两个日期是否是同一天
  */
+fun Date.isToday(): Boolean = isSameDay(getToday())
+
+fun isToday(dateStr: String?): Boolean {
+    if (dateStr.isNullOrEmpty()) return false
+    return getFormatDate(dateStr).isToday()
+}
+
+/**
+ * 快速判断两个日期是否是同一天
+ */
 fun Date.isSameDay(other: Date): Boolean {
     val cal1 = Calendar.getInstance().apply { time = this@isSameDay }
     val cal2 = Calendar.getInstance().apply { time = other }
@@ -39,6 +49,7 @@ private fun inferDatePattern(dateStr: String): String? = when {
     dateStr.matches(Regex("""\d{12}""")) -> "yyyyMMddHHmm"
     dateStr.matches(Regex("""\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}""")) -> "yyyy-MM-dd HH:mm:ss"
     dateStr.matches(Regex("""\d{2}:\d{2}""")) -> "HH:mm"
+    dateStr.matches(Regex("""\d{2}/\d{2}""")) -> "MM/dd"
     else -> null
 }
 

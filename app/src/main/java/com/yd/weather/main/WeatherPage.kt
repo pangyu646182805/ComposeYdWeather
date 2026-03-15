@@ -118,8 +118,8 @@ fun WeatherPage(
                             .background(
                                 brush = Brush.verticalGradient(
                                     colors = listOf(
-                                        colorResource(R.color.color_black).copy(alpha = 0.3f),
-                                        colorResource(R.color.color_black).copy(alpha = 0.2f)
+                                        colorResource(R.color.color_black).copy(alpha = 0.25f),
+                                        colorResource(R.color.color_black).copy(alpha = 0.15f)
                                     )
                                 )
                             )
@@ -247,6 +247,8 @@ fun WeatherContentList(
                             )
 
                             Constants.ITEM_TYPE_DAILY_WEATHER -> WeatherDailyPanel(
+                                item = item,
+                                index = index,
                                 isDark = isDark,
                                 panelOpacity = panelOpacity,
                                 firstItemOffset = firstItemOffset,
