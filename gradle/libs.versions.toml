@@ -29,6 +29,7 @@ toaster = "13.8"
 logcat = "1.2.4"
 xxpermissions = "28.0"
 reorderable = "3.0.0"
+coilCompose = "3.4.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -66,6 +67,8 @@ toaster = { group = "com.github.getActivity", name = "Toaster", version.ref = "t
 logcat = { module = "com.github.liangjingkanji:LogCat", version.ref = "logcat" }
 xxpermissions = { module = "com.github.getActivity:XXPermissions", version.ref = "xxpermissions" }
 reorderable = { module = "sh.calvin.reorderable:reorderable", version.ref = "reorderable" }
+coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coilCompose" }
+coil-network-okhttp = { module = "io.coil-kt.coil3:coil-network-okhttp", version.ref = "coilCompose" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

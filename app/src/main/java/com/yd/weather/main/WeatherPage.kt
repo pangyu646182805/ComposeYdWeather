@@ -5,6 +5,7 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -28,6 +30,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
@@ -36,12 +39,18 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.yd.weather.R
 import com.yd.weather.app.ViewState
+import com.yd.weather.component.AppColumn
+import com.yd.weather.component.AppText
 import com.yd.weather.component.CenterTopAppBar
+import com.yd.weather.component.HorizontalSpace
 import com.yd.weather.component.MultipleStatusView
 import com.yd.weather.component.VerticalSpace
+import com.yd.weather.component.WrapRow
+import com.yd.weather.component.alphaClick
 import com.yd.weather.config.Constants
 import com.yd.weather.db.model.CityData
 import com.yd.weather.model.WeatherItemData
@@ -174,6 +183,7 @@ fun WeatherContentList(
         weatherItems?.filter { it.itemType != Constants.ITEM_TYPE_WEATHER_HEADER }
     val weatherHeaderItemData =
         weatherItems?.find { it.itemType == Constants.ITEM_TYPE_WEATHER_HEADER }
+    val sourceTitle = weatherItemsFilter?.firstOrNull()?.weatherData?.source?.title
 
     val density = LocalDensity.current
 
@@ -280,6 +290,9 @@ fun WeatherContentList(
                         VerticalSpace(height = 12.dp)
                     }
                 }
+                if (!sourceTitle.isNullOrEmpty()) {
+                    item { Footer(sourceTitle, isDark = isDark) }
+                }
             }
         }
         WeatherHeaderWidget(
@@ -300,5 +313,45 @@ fun RightIcon(isWeatherHeaderDark: Boolean = false, onClick: () -> Unit) {
             size = 20.dp,
             tint = colorResource(if (isWeatherHeaderDark) R.color.color_white else R.color.color_black),
         )
+    }
+}
+
+@Composable
+fun Footer(sourceTitle: String?, isDark: Boolean = false) {
+    AppColumn(
+        modifier = Modifier.navigationBarsPadding(),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        AppText(
+            text = "天气信息来自${sourceTitle}",
+            fontSize = 12.sp,
+            color = colorResource(if (isDark) R.color.color_white else R.color.color_black)
+                .copy(alpha = 0.4f)
+        )
+        VerticalSpace(height = 12.dp)
+        WrapRow(
+            modifier = Modifier
+                .alphaClick {}
+                .background(colorResource(R.color.transparent))
+                .border(
+                    0.5.dp, colorResource(if (isDark) R.color.color_white else R.color.color_black)
+                        .copy(alpha = 0.5f), RoundedCornerShape(6.dp)
+                )
+                .padding(horizontal = 10.dp, vertical = 6.dp),
+        ) {
+            CommonIcon(
+                resId = R.mipmap.ic_sort_icon,
+                size = 18.dp,
+                tint = colorResource(if (isDark) R.color.color_white else R.color.color_black)
+                    .copy(alpha = 0.5f)
+            )
+            HorizontalSpace(width = 4.dp)
+            AppText(
+                text = "卡片排序",
+                fontSize = 15.sp,
+                color = colorResource(if (isDark) R.color.color_white else R.color.color_black)
+                    .copy(alpha = 0.5f)
+            )
+        }
     }
 }

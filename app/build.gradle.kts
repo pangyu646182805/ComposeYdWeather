@@ -132,4 +132,6 @@ dependencies {
     implementation(libs.logcat)
     implementation(libs.xxpermissions)
     implementation(libs.reorderable)
+    implementation(libs.coil.compose)
+    implementation(libs.coil.network.okhttp)
 }
