@@ -12,8 +12,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.takeOrElse
+import androidx.compose.ui.layout.FirstBaseline
+import androidx.compose.ui.layout.LastBaseline
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
@@ -21,8 +24,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.TextUnit.Companion
+import androidx.compose.ui.unit.sp
 
 /**
  * 文本类型
@@ -429,4 +435,53 @@ private fun BasicText(
             onTextLayout = onTextLayout
         )
     }
-} 
+}
+
+@Composable
+fun NoPaddingText(
+    text: String,
+    modifier: Modifier = Modifier,
+    fontSize: TextUnit = TextUnit.Unspecified,
+    color: Color = Color.Unspecified,
+    fontWeight: FontWeight? = null,
+    fontFamily: FontFamily? = null,
+    letterSpacing: TextUnit = TextUnit.Unspecified,
+    textAlign: TextAlign = TextAlign.Unspecified,
+    maxLines: Int = Int.MAX_VALUE,
+    overflow: TextOverflow = TextOverflow.Clip
+) {
+    val resolvedFontSize = if (fontSize != TextUnit.Unspecified) fontSize else 14.sp
+    Text(
+        text = text,
+        modifier = modifier.layout { measurable, constraints ->
+            val placeable = measurable.measure(constraints)
+            // 用 firstBaseline/lastBaseline 计算文字实际绘制区域，裁掉多余空间
+            val firstBaseline = placeable[FirstBaseline]
+            // 文字实际高度 ≈ ascent + descent，用 fontSize 近似
+            val fontSizePx = resolvedFontSize.toPx()
+            val textHeight = fontSizePx.toInt()
+            // baseline 到文字顶部的距离约为 fontSize * 0.8（ascent）
+            val ascent = (fontSizePx * 0.8f).toInt()
+            val yOffset = firstBaseline - ascent
+            layout(placeable.width, textHeight) {
+                placeable.place(0, -yOffset)
+            }
+        },
+        color = color,
+        fontSize = fontSize,
+        fontWeight = fontWeight,
+        fontFamily = fontFamily,
+        letterSpacing = letterSpacing,
+        textAlign = textAlign,
+        maxLines = maxLines,
+        overflow = overflow,
+        style = TextStyle(
+            lineHeight = resolvedFontSize,
+            platformStyle = PlatformTextStyle(includeFontPadding = false),
+            lineHeightStyle = LineHeightStyle(
+                alignment = LineHeightStyle.Alignment.Center,
+                trim = LineHeightStyle.Trim.Both
+            )
+        )
+    )
+}

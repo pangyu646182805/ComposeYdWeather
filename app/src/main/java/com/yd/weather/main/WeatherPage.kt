@@ -68,6 +68,7 @@ fun WeatherPage(
     isDark: Boolean = false,
     panelOpacity: Float = 0.1f,
     weatherItems: List<WeatherItemData>? = null,
+    itemTypeObserves: Array<Int>? = null,
     currentCityData: CityData? = null,
     mainViewModel: MainViewModel = hiltViewModel(),
     cityManagerViewModel: CityManagerViewModel = hiltViewModel()
@@ -134,9 +135,11 @@ fun WeatherPage(
                         isShowWeatherPage = isShowWeatherPage,
                         animValue = animValue,
                         isDark = isDark,
+                        panelOpacity = panelOpacity,
                         isWeatherHeaderDark = isWeatherHeaderDark,
                         currentCityData = currentCityData,
-                        weatherItems = weatherItems
+                        weatherItems = weatherItems,
+                        itemTypeObserves = itemTypeObserves
                     )
                 }
                 CenterTopAppBar(
@@ -164,7 +167,8 @@ fun WeatherContentList(
     panelOpacity: Float = 0.1f,
     isWeatherHeaderDark: Boolean = false,
     currentCityData: CityData? = null,
-    weatherItems: List<WeatherItemData>? = null
+    weatherItems: List<WeatherItemData>? = null,
+    itemTypeObserves: Array<Int>? = null,
 ) {
     val weatherItemsFilter =
         weatherItems?.filter { it.itemType != Constants.ITEM_TYPE_WEATHER_HEADER }
@@ -208,8 +212,7 @@ fun WeatherContentList(
                             topEnd = Constants.ITEM_PANEL_RADIUS.dp
                         )
                     ),
-                state = weatherScrollState,
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                state = weatherScrollState
             ) {
                 item {
                     VerticalSpace(height = (Constants.WEATHER_HEADER_MAX_HEIGHT - Constants.WEATHER_HEADER_MIN_HEIGHT).dp)
@@ -256,6 +259,9 @@ fun WeatherContentList(
                             )
 
                             Constants.ITEM_TYPE_OBSERVE -> WeatherObservePanel(
+                                item = item,
+                                itemTypeObserves = itemTypeObserves,
+                                index = index,
                                 isDark = isDark,
                                 panelOpacity = panelOpacity,
                                 firstItemOffset = firstItemOffset,
@@ -263,12 +269,15 @@ fun WeatherContentList(
                             )
 
                             Constants.ITEM_TYPE_LIFE_INDEX -> WeatherLifeIndexPanel(
+                                item = item,
+                                index = index,
                                 isDark = isDark,
                                 panelOpacity = panelOpacity,
                                 firstItemOffset = firstItemOffset,
                                 firstVisibleItemIndex = firstVisibleItemIndex
                             )
                         }
+                        VerticalSpace(height = 12.dp)
                     }
                 }
             }
