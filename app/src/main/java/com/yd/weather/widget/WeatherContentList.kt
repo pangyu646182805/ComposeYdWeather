@@ -13,15 +13,20 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import com.yd.weather.component.VerticalSpace
 import com.yd.weather.config.Constants
 import com.yd.weather.db.model.CityData
 import com.yd.weather.model.WeatherItemData
+import com.yd.weather.utils.RefreshState
+import com.yd.weather.utils.rememberRefreshState
 
 @Composable
 fun WeatherContentList(
@@ -35,8 +40,41 @@ fun WeatherContentList(
     weatherItems: List<WeatherItemData>? = null,
     itemTypeObserves: Array<Int>? = null,
     showSortCardButton: Boolean = true,
-    previewCity: Boolean = false
+    previewCity: Boolean = false,
+    onRefresh: (() -> Unit)? = null,
+    onRefreshState: ((RefreshState) -> Unit)? = null
 ) {
+    val coroutineScope = rememberCoroutineScope()
+    val refreshState = rememberRefreshState(coroutineScope).apply {
+        headerHeight = 128f
+        this.onRefresh = onRefresh
+        enableRefresh = onRefresh != null
+    }
+
+    // 把 refreshState 暴露给调用方，用于调用 refreshComplete()
+    onRefreshState?.invoke(refreshState)
+
+    val refreshOffset by remember {
+        derivedStateOf { refreshState.indicatorOffset }
+    }
+
+    // 刷新触发阈值
+    val refreshTriggerOffset = 128f
+
+    // 参照 Dart: refreshing/complete 时 opacity=1，否则按下拉比例计算
+    val refreshOpacity by remember {
+        derivedStateOf {
+            if (refreshState.isRefreshing || refreshState.isFinishing) 1f
+            else (refreshState.indicatorOffset / refreshTriggerOffset).coerceIn(0f, 1f)
+        }
+    }
+
+    val refreshDesc = when {
+        refreshState.isFinishing -> "刷新完成"
+        refreshState.isRefreshing -> "正在刷新"
+        else -> "释放刷新"
+    }
+
     val weatherItemsFilter =
         weatherItems?.filter { it.itemType != Constants.ITEM_TYPE_WEATHER_HEADER }
     val weatherHeaderItemData =
@@ -65,6 +103,7 @@ fun WeatherContentList(
         Box(
             modifier = Modifier
                 .statusBarsPadding()
+                .graphicsLayer { translationY = refreshOffset }
                 .padding(
                     top = Constants.WEATHER_HEADER_MIN_HEIGHT.dp,
                     start = Constants.ITEM_PANEL_MARGIN.dp,
@@ -74,6 +113,7 @@ fun WeatherContentList(
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
+                    .nestedScroll(refreshState.connection)
                     .clip(
                         RoundedCornerShape(
                             topStart = Constants.ITEM_PANEL_RADIUS.dp,
@@ -161,11 +201,13 @@ fun WeatherContentList(
         }
         WeatherHeaderWidget(
             currentCityData = currentCityData,
-            weatherHeaderOffset = firstItemOffset,
+            weatherHeaderOffset = if (firstVisibleItemIndex <= 0 && firstItemOffset <= 0) -refreshOffset else firstItemOffset,
             firstVisibleItemIndex = firstVisibleItemIndex,
             isWeatherHeaderDark = isWeatherHeaderDark,
             weatherItemData = weatherHeaderItemData,
-            previewCity = previewCity
+            previewCity = previewCity,
+            refreshOpacity = refreshOpacity,
+            refreshDesc = refreshDesc
         )
     }
 }

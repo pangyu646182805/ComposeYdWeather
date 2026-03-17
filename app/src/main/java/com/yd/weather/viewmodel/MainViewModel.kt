@@ -117,6 +117,31 @@ class MainViewModel @Inject constructor(
         )
     }
 
+    /**
+     * 下拉刷新触发，参照 Dart: obtainWeatherData(delayMilliseconds: 400)
+     * 数据加载完成后回调 onComplete 来触发 refreshComplete()
+     */
+    fun refreshWeatherData(onComplete: () -> Unit) {
+        val isLocationCity = appState.currentCityData.value?.isLocationCity ?: false
+        val currentCityId = appState.currentCityData.value?.cityId ?: ""
+        val key = if (isLocationCity) Constants.LOCATION_CITY_ID else currentCityId
+        ResultHandler.handleResultWithT(
+            scope = viewModelScope,
+            delayTimeMillis = 400,
+            flow = weatherRepository.obtainWeatherData(currentCityId).asResult(),
+            onLoading = {},
+            onData = { data ->
+                setViewState(ViewState.Success)
+                appState.saveWeatherData(key, data)
+                setWeatherData(data)
+                onComplete()
+            },
+            onError = { _, _ ->
+                onComplete()
+            }
+        )
+    }
+
     private fun setWeatherData(weatherData: WeatherData?) {
         viewModelScope.launch {
             generateWeatherItems(weatherData)

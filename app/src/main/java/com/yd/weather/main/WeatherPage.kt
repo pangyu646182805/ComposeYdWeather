@@ -16,6 +16,7 @@ import androidx.compose.material3.TopAppBarDefaults.topAppBarColors
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -34,6 +35,7 @@ import com.yd.weather.component.MultipleStatusView
 import com.yd.weather.db.model.CityData
 import com.yd.weather.model.WeatherItemData
 import com.yd.weather.res.CommonIcon
+import com.yd.weather.utils.RefreshState
 import com.yd.weather.utils.WeatherContentClip
 import com.yd.weather.viewmodel.CityManagerViewModel
 import com.yd.weather.viewmodel.MainViewModel
@@ -56,6 +58,8 @@ fun WeatherPage(
     cityManagerViewModel: CityManagerViewModel = hiltViewModel()
 ) {
     val weatherScrollState = rememberLazyListState()
+    // 保存 refreshState 引用，用于数据加载完成后调用 refreshComplete()
+    val refreshStateRef = remember { mutableStateOf<RefreshState?>(null) }
     val animatable = remember { Animatable(if (isShowWeatherPage) 0f else 1f) }
     val predictiveBackProgress by mainViewModel.predictiveBackProgress.collectAsStateWithLifecycle()
 
@@ -134,7 +138,11 @@ fun WeatherPage(
                         isWeatherHeaderDark = isWeatherHeaderDark,
                         currentCityData = currentCityData,
                         weatherItems = weatherItems,
-                        itemTypeObserves = itemTypeObserves
+                        itemTypeObserves = itemTypeObserves,
+                        onRefresh = {
+                            mainViewModel.refreshWeatherData { refreshStateRef.value?.refreshComplete() }
+                        },
+                        onRefreshState = { refreshStateRef.value = it }
                     )
                 }
                 CenterTopAppBar(

@@ -1,24 +1,22 @@
 package com.yd.weather.widget
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.yd.weather.R
@@ -31,6 +29,7 @@ import com.yd.weather.component.WrapRow
 import com.yd.weather.config.Constants
 import com.yd.weather.db.model.CityData
 import com.yd.weather.model.WeatherItemData
+import com.yd.weather.res.CommonIcon
 import com.yd.weather.utils.Commons
 import com.yd.weather.utils.getToday
 import com.yd.weather.utils.toDateString
@@ -42,7 +41,9 @@ fun WeatherHeaderWidget(
     firstVisibleItemIndex: Int = 0,
     isWeatherHeaderDark: Boolean = false,
     weatherItemData: WeatherItemData? = null,
-    previewCity: Boolean = false
+    previewCity: Boolean = false,
+    refreshOpacity: Float = 0f,
+    refreshDesc: String = ""
 ) {
     val maxHeight = Constants.WEATHER_HEADER_MAX_HEIGHT
     val minHeight = Constants.WEATHER_HEADER_MIN_HEIGHT
@@ -82,8 +83,33 @@ fun WeatherHeaderWidget(
             .height(currentHeight.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        // 下拉刷新指示器 - 参照 Dart AnimatedOpacity + AnimatedSlide
+        Box(
+            modifier = Modifier
+                .height(marginTop.dp)
+                .alpha(refreshOpacity)
+                .graphicsLayer {
+                    translationY = -0.2f * (1 - refreshOpacity) * marginTop
+                },
+            contentAlignment = Alignment.Center
+        ) {
+            WrapRow {
+                CommonIcon(
+                    resId = R.mipmap.ic_refresh_icon,
+                    size = 16.dp,
+                    tint = colorResource(if (isWeatherHeaderDark) R.color.color_white else R.color.color_black)
+                        .copy(alpha = 0.6f)
+                )
+                HorizontalSpace(width = 4.dp)
+                AppText(
+                    text = refreshDesc,
+                    fontSize = 12.sp,
+                    color = colorResource(if (isWeatherHeaderDark) R.color.color_white else R.color.color_black)
+                        .copy(alpha = 0.6f)
+                )
+            }
+        }
         AppText(
-            modifier = Modifier.padding(top = marginTop.dp),
             text = title(
                 currentCityData = currentCityData,
                 previewCity = previewCity,
