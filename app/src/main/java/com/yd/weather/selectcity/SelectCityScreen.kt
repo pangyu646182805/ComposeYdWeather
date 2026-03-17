@@ -59,6 +59,7 @@ import com.yd.weather.model.LocationData
 import com.yd.weather.model.SelectCityData
 import com.yd.weather.res.CommonIcon
 import com.yd.weather.res.YdWeatherAppTheme
+import com.yd.weather.utils.SetStatusBarStyle
 import com.yd.weather.utils.ToastUtils
 import com.yd.weather.viewmodel.SelectCityViewModel
 
@@ -69,6 +70,7 @@ internal fun SelectCityRoute(
     canPop: Boolean = false,
     viewModel: SelectCityViewModel = hiltViewModel()
 ) {
+    SetStatusBarStyle(isLight = true)
     val context = LocalContext.current
     val viewState by viewModel.viewState.collectAsState()
     val selectCityData by viewModel.selectCityData.collectAsState()

@@ -1,6 +1,7 @@
 package com.yd.weather.main
 
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
@@ -88,6 +89,7 @@ import kotlinx.coroutines.launch
 import sh.calvin.reorderable.ReorderableCollectionItemScope
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
+import kotlin.coroutines.cancellation.CancellationException
 
 @Composable
 fun CityManagerPage(
@@ -130,10 +132,6 @@ fun CityManagerPage(
         viewModel.closeEditMode()
     }
 
-    BackHandler(enabled = !isEditMode && !isShowWeatherPage) {
-        mainViewModel.showWeatherPage(viewModel, scrollState)
-    }
-
     val fullyVisibleIndices by remember {
         derivedStateOf {
             val layoutInfo = scrollState.layoutInfo
@@ -158,6 +156,20 @@ fun CityManagerPage(
 
     LaunchedEffect(fullyVisibleIndices) {
         viewModel.fullyVisibleIndices = fullyVisibleIndices
+    }
+
+    PredictiveBackHandler(enabled = !isEditMode && !isShowWeatherPage) { progress ->
+        try {
+            progress.collect { backEvent ->
+                mainViewModel.updatePredictiveBackProgress(backEvent.progress)
+            }
+            // 手势完成 - 返回天气页
+            mainViewModel.updatePredictiveBackProgress(null)
+            mainViewModel.showWeatherPage(viewModel, scrollState)
+        } catch (e: CancellationException) {
+            // 手势取消 - 恢复城市管理页
+            mainViewModel.updatePredictiveBackProgress(null)
+        }
     }
 
     AppScaffold(

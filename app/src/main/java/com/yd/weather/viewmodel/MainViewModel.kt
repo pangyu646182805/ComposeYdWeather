@@ -65,6 +65,13 @@ class MainViewModel @Inject constructor(
 
     var offsetY = 0f
 
+    private val _predictiveBackProgress = MutableStateFlow<Float?>(null)
+    val predictiveBackProgress: StateFlow<Float?> = _predictiveBackProgress
+
+    fun updatePredictiveBackProgress(progress: Float?) {
+        _predictiveBackProgress.value = progress
+    }
+
     fun appState(): AppState = _appState
 
     init {
