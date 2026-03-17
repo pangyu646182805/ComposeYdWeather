@@ -20,6 +20,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
@@ -37,6 +39,7 @@ import com.yd.weather.component.AppText
 import com.yd.weather.component.MultipleStatusView
 import com.yd.weather.component.bounceClick
 import com.yd.weather.navigation.AddCityResultKey
+import com.yd.weather.utils.RefreshState
 import com.yd.weather.utils.SetStatusBarStyle
 import com.yd.weather.viewmodel.WeatherPreviewViewModel
 import com.yd.weather.widget.WeatherContentList
@@ -74,6 +77,7 @@ internal fun WeatherPreviewRoute(
     )
 
     val weatherScrollState = rememberLazyListState()
+    val refreshStateRef = remember { mutableStateOf<RefreshState?>(null) }
 
     Box(
         modifier = Modifier
@@ -111,7 +115,11 @@ internal fun WeatherPreviewRoute(
                     weatherItems = weatherItems,
                     itemTypeObserves = itemTypeObserves,
                     showSortCardButton = false,
-                    previewCity = true
+                    previewCity = true,
+                    onRefresh = {
+                        viewModel.refreshWeatherData { refreshStateRef.value?.refreshComplete() }
+                    },
+                    onRefreshState = { refreshStateRef.value = it }
                 )
             }
             AppRow(

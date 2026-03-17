@@ -83,6 +83,23 @@ class WeatherPreviewViewModel @Inject constructor(
         _panelOpacity.value = appState.calPanelOpacity(_weatherBg.value)
     }
 
+    fun refreshWeatherData(onComplete: () -> Unit) {
+        ResultHandler.handleResultWithT(
+            scope = viewModelScope,
+            delayTimeMillis = 400,
+            flow = weatherRepository.obtainWeatherData(cityId ?: "").asResult(),
+            onLoading = {},
+            onData = { data ->
+                setViewState(ViewState.Success)
+                generateWeatherItems(data)
+                onComplete()
+            },
+            onError = { _, _ ->
+                onComplete()
+            }
+        )
+    }
+
     private fun generateWeatherItems(weatherData: WeatherData?) {
         // 生成天气背景
         _weatherBg.value = appState.generateWeatherBg(weatherData)
