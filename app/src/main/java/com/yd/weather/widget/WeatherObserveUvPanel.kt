@@ -30,12 +30,17 @@ fun WeatherObserveUvPanel(
     firstVisibleItemIndex: Int = 0
 ) {
     val weatherData = item.weatherData
-    val currentWeatherDetailData =
-        weatherData?.forecast15?.find { it.date == getToday().toDateString(pattern = Constants.YYYY_MM_DD) }
 
-    val uvLevel = weatherData?.observe?.uvLevel ?: currentWeatherDetailData?.uvLevel ?: ""
-    val uvIndex = weatherData?.observe?.uvIndex ?: currentWeatherDetailData?.uvIndex ?: 0
-    val uvIndexMax = weatherData?.observe?.uvIndexMax ?: currentWeatherDetailData?.uvIndexMax ?: 0
+    var uvIndex = weatherData?.observe?.uvIndex ?: 0
+    var uvIndexMax = weatherData?.observe?.uvIndexMax ?: 0
+    var uvLevel = weatherData?.observe?.uvLevel ?: ""
+    if (uvIndex <= 0 || uvIndexMax <= 0 || uvLevel.isEmpty()) {
+        val currentWeatherDetailData =
+            weatherData?.forecast15?.find { it.date == getToday().toDateString(pattern = Constants.YYYY_MM_DD) }
+        uvIndex = currentWeatherDetailData?.uvIndex ?: 0
+        uvIndexMax = currentWeatherDetailData?.uvIndexMax ?: 0
+        uvLevel = currentWeatherDetailData?.uvLevel ?: "0"
+    }
     WeatherStickyPanel(
         index = index,
         isDark = isDark,
