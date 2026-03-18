@@ -9,6 +9,8 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -62,12 +64,18 @@ fun WeatherContentList(
     val refreshTriggerOffset = 128f
 
     // 参照 Dart: refreshing/complete 时 opacity=1，否则按下拉比例计算
-    val refreshOpacity by remember {
+    val baseRefreshOpacity by remember {
         derivedStateOf {
             if (refreshState.isRefreshing || refreshState.isFinishing) 1f
             else (refreshState.indicatorOffset / refreshTriggerOffset).coerceIn(0f, 1f)
         }
     }
+    // 刷新完成时 opacity 从1平滑过渡到0
+    val refreshOpacity by animateFloatAsState(
+        targetValue = if (refreshState.isFinishing) 0f else baseRefreshOpacity,
+        animationSpec = tween(if (refreshState.isFinishing) 600 else 0),
+        label = "refreshOpacity"
+    )
 
     val refreshDesc = when {
         refreshState.isFinishing -> "刷新完成"

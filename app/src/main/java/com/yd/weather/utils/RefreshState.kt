@@ -180,9 +180,9 @@ class RefreshState(private val coroutineScope: CoroutineScope) {
             return when {
                 enableRefresh && available.y < 0 -> {
                     // 处理上滑（收起）
-                    val canConsumed = (available.y * 0.5f).coerceAtLeast(0 - indicatorOffset)
+                    val canConsumed = (available.y * 0.35f).coerceAtLeast(0 - indicatorOffset)
                     consumed(canConsumed)
-                    available.copy(x = 0f, y = canConsumed / 0.5f)
+                    available.copy(x = 0f, y = canConsumed / 0.35f)
                 }
 
                 else -> Offset.Zero
@@ -208,12 +208,12 @@ class RefreshState(private val coroutineScope: CoroutineScope) {
             return when {
                 enableRefresh && available.y > 0 -> {
                     // 处理下拉
-                    val canConsumed = available.y * 0.5f
+                    val canConsumed = available.y * 0.35f
                     consumed(canConsumed)
                     if (source == NestedScrollSource.SideEffect && indicatorOffset > headerHeight) {
                         throw CancellationException()
                     }
-                    available.copy(x = 0f, y = canConsumed / 0.5f)
+                    available.copy(x = 0f, y = canConsumed / 0.35f)
                 }
 
                 else -> Offset.Zero
