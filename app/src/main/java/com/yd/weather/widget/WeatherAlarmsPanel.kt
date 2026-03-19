@@ -1,6 +1,8 @@
 package com.yd.weather.widget
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -10,11 +12,19 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionOnScreen
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -26,7 +36,9 @@ import com.yd.weather.component.AppText
 import com.yd.weather.component.HorizontalSpace
 import com.yd.weather.component.VerticalSpace
 import com.yd.weather.component.WrapRow
+import com.yd.weather.component.alphaClick
 import com.yd.weather.config.Constants
+import com.yd.weather.dialog.WeatherAlarmsDetailPopup
 import com.yd.weather.model.WeatherAlarmsData
 import com.yd.weather.model.WeatherItemData
 import com.yd.weather.utils.WeatherPanelClip
@@ -41,10 +53,38 @@ fun WeatherAlarmsPanel(
     isDark: Boolean = false,
     panelOpacity: Float = 0.1f,
     firstItemOffset: Float = 0f,
-    firstVisibleItemIndex: Int = 0
+    firstVisibleItemIndex: Int = 0,
+    showHideWeatherContent: ((Boolean) -> Unit)? = null
 ) {
+    var showDetailPopup by remember { mutableStateOf(false) }
+    var panelYPx by remember { mutableFloatStateOf(0f) }
     val weatherData = item.weatherData
+
+    if (showDetailPopup) {
+        WeatherAlarmsDetailPopup(
+            alarms = weatherData?.alarms,
+            isDark = isDark,
+            panelOpacity = panelOpacity,
+            panelYPx = panelYPx,
+            onDismiss = {
+                showDetailPopup = false
+                showHideWeatherContent?.invoke(true)
+            }
+        )
+    }
+
     WeatherStickyPanel(
+        modifier = Modifier
+            .onGloballyPositioned { coordinates ->
+                panelYPx = coordinates.positionOnScreen().y
+            }
+            .clickable(
+                indication = null,
+                interactionSource = remember { MutableInteractionSource() }
+            ) {
+                showHideWeatherContent?.invoke(false)
+                showDetailPopup = true
+            },
         index = index,
         isDark = isDark,
         panelOpacity = panelOpacity,
@@ -66,19 +106,28 @@ fun WeatherAlarmsPanel(
 
 @Composable
 internal fun Swiper(
+    modifier: Modifier = Modifier,
     alarms: List<WeatherAlarmsData>?,
     offsetPx: Float = 0f,
     titleOpacity: Float = 1F,
-    timeOpacity: Float = 1F
+    timeOpacity: Float = 1F,
+    isDark: Boolean = false,
+    panelOpacity: Float = 0f
 ) {
     if (alarms.isNullOrEmpty()) return
     val pagerState = rememberPagerState(pageCount = { alarms.size })
 
+    val bgModifier = if (panelOpacity > 0f) Modifier.background(
+        colorResource(if (isDark) R.color.color_white else R.color.color_black).copy(alpha = panelOpacity),
+        shape = RoundedCornerShape(Constants.ITEM_PANEL_RADIUS.dp)
+    ) else Modifier
+
     Box(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .height(Constants.WEATHER_ALARM_PANEL_HEIGHT.dp)
-            .clip(WeatherPanelClip(offsetPx)),
+            .then(bgModifier)
+            .clip(if (offsetPx != 0f) WeatherPanelClip(offsetPx) else RoundedCornerShape(Constants.ITEM_PANEL_RADIUS.dp)),
         contentAlignment = Alignment.BottomCenter
     ) {
         HorizontalPager(

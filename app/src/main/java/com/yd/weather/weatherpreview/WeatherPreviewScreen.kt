@@ -5,7 +5,9 @@ import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -20,12 +22,15 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.unit.dp
@@ -78,6 +83,7 @@ internal fun WeatherPreviewRoute(
 
     val weatherScrollState = rememberLazyListState()
     val refreshStateRef = remember { mutableStateOf<RefreshState?>(null) }
+    var topBarOpacity by remember { mutableFloatStateOf(1f) }
 
     Box(
         modifier = Modifier
@@ -119,11 +125,18 @@ internal fun WeatherPreviewRoute(
                     onRefresh = {
                         viewModel.refreshWeatherData { refreshStateRef.value?.refreshComplete() }
                     },
-                    onRefreshState = { refreshStateRef.value = it }
+                    onRefreshState = { refreshStateRef.value = it },
+                    onContentVisibilityChange = { show -> topBarOpacity = if (show) 1f else 0f }
                 )
             }
+            val animatedTopBarOpacity by animateFloatAsState(
+                targetValue = topBarOpacity,
+                animationSpec = tween(durationMillis = 200),
+                label = "topBarOpacity"
+            )
             AppRow(
                 modifier = Modifier
+                    .alpha(animatedTopBarOpacity)
                     .padding(start = 12.dp, top = statusBarTop + 12.dp, end = 12.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {

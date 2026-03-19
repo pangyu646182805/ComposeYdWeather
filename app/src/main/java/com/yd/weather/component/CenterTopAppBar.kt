@@ -39,6 +39,7 @@ import com.yd.weather.res.CommonIcon
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CenterTopAppBar(
+    modifier: Modifier = Modifier,
     title: Int? = null,
     titleText: String? = null,
     titleAlpha: Float = 1f,
@@ -49,7 +50,7 @@ fun CenterTopAppBar(
     showBackIcon: Boolean = true
 ) {
     CenterAlignedTopAppBar(
-        modifier = Modifier
+        modifier = modifier
             .statusBarsPadding()
             .height(48.dp),
         windowInsets = WindowInsets(0, 0, 0, 0),

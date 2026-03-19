@@ -21,7 +21,12 @@ import com.yd.weather.component.alphaClick
 import com.yd.weather.res.CommonIcon
 
 @Composable
-fun WeatherFooter(sourceTitle: String?, isDark: Boolean = false, showSortCardButton: Boolean = true) {
+fun WeatherFooter(
+    sourceTitle: String?,
+    isDark: Boolean = false,
+    showSortCardButton: Boolean = true,
+    onCardSortButtonClick: () -> Unit = {}
+) {
     AppColumn(
         modifier = Modifier.navigationBarsPadding(),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -36,7 +41,7 @@ fun WeatherFooter(sourceTitle: String?, isDark: Boolean = false, showSortCardBut
             VerticalSpace(height = 12.dp)
             WrapRow(
                 modifier = Modifier
-                    .alphaClick {}
+                    .alphaClick(onClick = onCardSortButtonClick)
                     .background(colorResource(R.color.transparent))
                     .border(
                         0.5.dp,

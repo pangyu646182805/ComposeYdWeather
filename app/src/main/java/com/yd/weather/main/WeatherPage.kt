@@ -1,6 +1,8 @@
 package com.yd.weather.main
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
@@ -16,8 +18,10 @@ import androidx.compose.material3.TopAppBarDefaults.topAppBarColors
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
@@ -34,6 +38,7 @@ import com.yd.weather.component.CenterTopAppBar
 import com.yd.weather.component.MultipleStatusView
 import com.yd.weather.db.model.CityData
 import com.yd.weather.model.WeatherItemData
+import com.yd.weather.routes.CardSortRoutes
 import com.yd.weather.res.CommonIcon
 import com.yd.weather.utils.RefreshState
 import com.yd.weather.utils.WeatherContentClip
@@ -60,6 +65,7 @@ fun WeatherPage(
     val weatherScrollState = rememberLazyListState()
     // 保存 refreshState 引用，用于数据加载完成后调用 refreshComplete()
     val refreshStateRef = remember { mutableStateOf<RefreshState?>(null) }
+    var topBarOpacity by remember { mutableFloatStateOf(1f) }
     val animatable = remember { Animatable(if (isShowWeatherPage) 0f else 1f) }
     val predictiveBackProgress by mainViewModel.predictiveBackProgress.collectAsStateWithLifecycle()
 
@@ -142,10 +148,20 @@ fun WeatherPage(
                         onRefresh = {
                             mainViewModel.refreshWeatherData { refreshStateRef.value?.refreshComplete() }
                         },
-                        onRefreshState = { refreshStateRef.value = it }
+                        onRefreshState = { refreshStateRef.value = it },
+                        onContentVisibilityChange = { show -> topBarOpacity = if (show) 1f else 0f },
+                        onCardSortButtonClick = {
+                            mainViewModel.navigate(CardSortRoutes.CardSort)
+                        }
                     )
                 }
+                val animatedTopBarOpacity by animateFloatAsState(
+                    targetValue = topBarOpacity,
+                    animationSpec = tween(durationMillis = 200),
+                    label = "topBarOpacity"
+                )
                 CenterTopAppBar(
+                    modifier = Modifier.alpha(animatedTopBarOpacity),
                     showBackIcon = false,
                     colors = topAppBarColors(containerColor = colorResource(R.color.transparent)),
                     actions = {

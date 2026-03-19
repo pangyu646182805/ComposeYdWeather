@@ -1,6 +1,7 @@
 package com.yd.weather.utils
 
 import android.app.Activity
+import android.content.ContextWrapper
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
@@ -11,7 +12,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalView
-import androidx.core.view.WindowInsetsControllerCompat
+import androidx.compose.ui.window.DialogWindowProvider
+import androidx.core.view.WindowCompat
 
 @Composable
 fun <T> ObserveListAddition(list: List<T>?, onAdd: () -> Unit) {
@@ -30,11 +32,23 @@ fun <T> ObserveListAddition(list: List<T>?, onAdd: () -> Unit) {
 fun SetStatusBarStyle(isLight: Boolean) {
     val view = LocalView.current
     SideEffect {
-        val window = (view.context as Activity).window
-        WindowInsetsControllerCompat(window, view).apply {
+        // Inside Dialog/ModalBottomSheet, use the dialog's own window
+        val window = (view.parent as? DialogWindowProvider)?.window
+            ?: view.context.findActivity()?.window
+            ?: return@SideEffect
+        WindowCompat.getInsetsController(window, view).apply {
             isAppearanceLightStatusBars = isLight
         }
     }
+}
+
+private fun android.content.Context.findActivity(): Activity? {
+    var ctx = this
+    while (ctx is ContextWrapper) {
+        if (ctx is Activity) return ctx
+        ctx = ctx.baseContext
+    }
+    return null
 }
 
 fun Color.isLight(): Boolean {

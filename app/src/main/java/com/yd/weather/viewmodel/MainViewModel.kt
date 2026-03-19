@@ -84,6 +84,17 @@ class MainViewModel @Inject constructor(
                 obtainWeatherData()
             }
         }
+        // 监听卡片排序变化，重新生成天气列表
+        viewModelScope.launch {
+            appState.currentWeatherCardSort.drop(1).collect {
+                reorderWeatherItems()
+            }
+        }
+        viewModelScope.launch {
+            appState.currentWeatherObservesCardSort.drop(1).collect {
+                reorderWeatherItems()
+            }
+        }
     }
 
     fun obtainWeatherData() {
@@ -240,6 +251,15 @@ class MainViewModel @Inject constructor(
                 block?.invoke(data)
             },
         )
+    }
+
+    private fun reorderWeatherItems() {
+        val weatherData = _weatherItems.value?.firstOrNull()?.weatherData ?: return
+        _itemTypeObserves.value = appState.getItemTypeObserves(
+            appState.currentWeatherObservesCardSort.value,
+            Constants.ITEM_TYPE_OBSERVE, weatherData
+        )
+        _weatherItems.value = appState.generateWeatherItems(_itemTypeObserves.value, weatherData)
     }
 
     private fun generateWeatherItems(weatherData: WeatherData?) {

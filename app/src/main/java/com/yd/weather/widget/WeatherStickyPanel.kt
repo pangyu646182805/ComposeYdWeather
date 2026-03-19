@@ -28,6 +28,7 @@ import com.yd.weather.config.Constants
 
 @Composable
 fun WeatherStickyPanel(
+    modifier: Modifier = Modifier,
     index: Int = 0,
     isDark: Boolean = false,
     panelOpacity: Float = 0.1f,
@@ -77,7 +78,7 @@ fun WeatherStickyPanel(
     }
 
     Box(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .height(heightDp)
             .alpha(contentOpacity)

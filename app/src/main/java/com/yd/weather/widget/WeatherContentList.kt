@@ -10,12 +10,15 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
@@ -42,10 +45,18 @@ fun WeatherContentList(
     weatherItems: List<WeatherItemData>? = null,
     itemTypeObserves: Array<Int>? = null,
     showSortCardButton: Boolean = true,
+    onCardSortButtonClick: () -> Unit = {},
     previewCity: Boolean = false,
     onRefresh: (() -> Unit)? = null,
-    onRefreshState: ((RefreshState) -> Unit)? = null
+    onRefreshState: ((RefreshState) -> Unit)? = null,
+    onContentVisibilityChange: ((Boolean) -> Unit)? = null
 ) {
+    var contentOpacity by remember { mutableFloatStateOf(1f) }
+    val showHideWeatherContent: (Boolean) -> Unit = { show ->
+        contentOpacity = if (show) 1f else 0f
+        onContentVisibilityChange?.invoke(show)
+    }
+
     val coroutineScope = rememberCoroutineScope()
     val refreshState = rememberRefreshState(coroutineScope).apply {
         headerHeight = 128f
@@ -98,14 +109,20 @@ fun WeatherContentList(
         derivedStateOf { weatherScrollState.firstVisibleItemIndex }
     }
 
+    val animatedContentOpacity by animateFloatAsState(
+        targetValue = contentOpacity,
+        animationSpec = tween(durationMillis = 200),
+        label = "contentOpacity"
+    )
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .alpha(
-                if (isShowWeatherPage)
+                animatedContentOpacity * (if (isShowWeatherPage)
                     1 - ((animValue - 0.8f) / 0.2f).coerceIn(0f, 1f)
                 else
-                    ((0.2f - animValue) / 0.2f).coerceIn(0f, 1f)
+                    ((0.2f - animValue) / 0.2f).coerceIn(0f, 1f))
             )
     ) {
         Box(
@@ -144,7 +161,8 @@ fun WeatherContentList(
                                 isDark = isDark,
                                 panelOpacity = panelOpacity,
                                 firstItemOffset = firstItemOffset,
-                                firstVisibleItemIndex = firstVisibleItemIndex
+                                firstVisibleItemIndex = firstVisibleItemIndex,
+                                showHideWeatherContent = showHideWeatherContent
                             )
 
                             Constants.ITEM_TYPE_AIR_QUALITY -> WeatherAirQualityPanel(
@@ -153,7 +171,8 @@ fun WeatherContentList(
                                 isDark = isDark,
                                 panelOpacity = panelOpacity,
                                 firstItemOffset = firstItemOffset,
-                                firstVisibleItemIndex = firstVisibleItemIndex
+                                firstVisibleItemIndex = firstVisibleItemIndex,
+                                showHideWeatherContent = showHideWeatherContent
                             )
 
                             Constants.ITEM_TYPE_HOUR_WEATHER -> WeatherHourPanel(
@@ -179,9 +198,11 @@ fun WeatherContentList(
                                 itemTypeObserves = itemTypeObserves,
                                 index = index,
                                 isDark = isDark,
+                                isWeatherHeaderDark = isWeatherHeaderDark,
                                 panelOpacity = panelOpacity,
                                 firstItemOffset = firstItemOffset,
-                                firstVisibleItemIndex = firstVisibleItemIndex
+                                firstVisibleItemIndex = firstVisibleItemIndex,
+                                showHideWeatherContent = showHideWeatherContent
                             )
 
                             Constants.ITEM_TYPE_LIFE_INDEX -> WeatherLifeIndexPanel(
@@ -201,7 +222,8 @@ fun WeatherContentList(
                         WeatherFooter(
                             sourceTitle,
                             isDark = isDark,
-                            showSortCardButton = showSortCardButton
+                            showSortCardButton = showSortCardButton,
+                            onCardSortButtonClick = onCardSortButtonClick
                         )
                     }
                 }

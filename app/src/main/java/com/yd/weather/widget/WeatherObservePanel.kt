@@ -18,9 +18,11 @@ fun WeatherObservePanel(
     itemTypeObserves: Array<Int>?,
     index: Int = 0,
     isDark: Boolean = false,
+    isWeatherHeaderDark: Boolean = false,
     panelOpacity: Float = 0.1f,
     firstItemOffset: Float = 0f,
-    firstVisibleItemIndex: Int = 0
+    firstVisibleItemIndex: Int = 0,
+    showHideWeatherContent: ((Boolean) -> Unit)? = null
 ) {
     if (itemTypeObserves.isNullOrEmpty()) return
     val fixedFirstItemOffset = when {
@@ -111,9 +113,11 @@ fun WeatherObservePanel(
                     item = item,
                     index = fixedIndex,
                     isDark = isDark,
+                    isWeatherHeaderDark = isWeatherHeaderDark,
                     panelOpacity = panelOpacity,
                     firstItemOffset = fixedFirstItemOffset,
-                    firstVisibleItemIndex = fixedFirstVisibleItemIndex
+                    firstVisibleItemIndex = fixedFirstVisibleItemIndex,
+                    showHideWeatherContent = showHideWeatherContent
                 )
             }
         }
