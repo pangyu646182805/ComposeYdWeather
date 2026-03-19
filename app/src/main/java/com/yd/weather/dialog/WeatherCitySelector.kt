@@ -7,6 +7,7 @@ import android.graphics.Shader
 import android.os.Build
 import android.view.View
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -14,7 +15,9 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -22,12 +25,16 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -96,7 +103,7 @@ fun WeatherCitySelector(
     // Swiper 滑入状态
     var isSwiperShow by remember { mutableStateOf(false) }
     // Swiper 透明度（参照 Flutter _opacity，选中时淡出）
-    var swiperOpacity by remember { mutableStateOf(1f) }
+    var swiperOpacity by remember { mutableFloatStateOf(1f) }
     // 选中后快照放大 0.6→1（参照 Flutter _scale）
     val scaleAnim = remember { Animatable(0.6f) }
     // 选中的城市 index（-1 表示未选中）
@@ -104,7 +111,19 @@ fun WeatherCitySelector(
 
     val initialIndex = addedCities.indexOfFirst { it.cityId == currentCityData?.cityId }
         .coerceAtLeast(0)
-    val pagerState = rememberPagerState(initialPage = initialIndex) { addedCities.size }
+    val lazyListState = rememberLazyListState(initialFirstVisibleItemIndex = initialIndex)
+    val snapFlingBehavior = rememberSnapFlingBehavior(lazyListState)
+    // 当前居中的 item index
+    val currentIndex by remember {
+        derivedStateOf {
+            val layoutInfo = lazyListState.layoutInfo
+            val viewportCenter = layoutInfo.viewportStartOffset +
+                    (layoutInfo.viewportEndOffset - layoutInfo.viewportStartOffset) / 2
+            layoutInfo.visibleItemsInfo.minByOrNull {
+                abs((it.offset + it.size / 2) - viewportCenter)
+            }?.index ?: initialIndex
+        }
+    }
 
     // 为每个城市生成快照数据
     val snapshots = remember(addedCities) {
@@ -271,34 +290,49 @@ fun WeatherCitySelector(
                 )
             }
 
-            // Swiper 卡片（参照 Flutter ScrollSnapList + AnimatedOpacity）
+            // LazyRow + snap 卡片
             val animatedSwiperOpacity by androidx.compose.animation.core.animateFloatAsState(
                 targetValue = swiperOpacity,
                 animationSpec = tween(200),
                 label = "swiperOpacity"
             )
-            HorizontalPager(
-                state = pagerState,
+            val itemWidthDp = screenWidthDp * 0.6f
+            val horizontalPadding = ((screenWidthDp - itemWidthDp) / 2f).dp
+
+            LazyRow(
+                state = lazyListState,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height((screenHeightDp * 0.6f).dp)
                     .align(Alignment.Center)
                     .alpha(animatedSwiperOpacity)
-                    .graphicsLayer { translationX = swiperTranslateX.value },
-                    contentPadding = PaddingValues(horizontal = (screenWidthDp * 0.2f).dp),
-                    pageSpacing = 12.dp,
-                    beyondViewportPageCount = 1
-                ) { page ->
-                    val snapshot = snapshots.getOrNull(page) ?: return@HorizontalPager
-                    // 缩放：当前页 1.0，相邻页 0.9（参照鸿蒙 customContentTransition）
-                    val pageOffset = abs(
-                        (pagerState.currentPage - page) + pagerState.currentPageOffsetFraction
-                    )
-                    val itemScale = 1f - pageOffset.coerceIn(0f, 1f) * 0.1f
+                    .graphicsLayer {
+                        translationX = swiperTranslateX.value
+                        clip = false
+                    },
+                contentPadding = PaddingValues(horizontal = horizontalPadding),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                flingBehavior = snapFlingBehavior
+            ) {
+                itemsIndexed(snapshots, key = { i, _ -> i }) { index, snapshot ->
+                    // 计算当前 item 相对于视口中心的偏移比例
+                    val itemOffset by remember {
+                        derivedStateOf {
+                            val layoutInfo = lazyListState.layoutInfo
+                            val itemInfo = layoutInfo.visibleItemsInfo.find { it.index == index }
+                                ?: return@derivedStateOf 1f
+                            val viewportCenter = layoutInfo.viewportStartOffset +
+                                    (layoutInfo.viewportEndOffset - layoutInfo.viewportStartOffset) / 2f
+                            val itemCenter = itemInfo.offset + itemInfo.size / 2f
+                            abs(itemCenter - viewportCenter) / itemInfo.size.toFloat()
+                        }
+                    }
+                    val itemScale = 1f - itemOffset.coerceIn(0f, 1f) * 0.1f
 
                     Box(
                         modifier = Modifier
-                            .fillMaxSize()
+                            .width(itemWidthDp.dp)
+                            .height((screenHeightDp * 0.6f).dp)
                             .graphicsLayer {
                                 scaleX = itemScale
                                 scaleY = itemScale
@@ -308,10 +342,12 @@ fun WeatherCitySelector(
                                 indication = null,
                                 interactionSource = remember { MutableInteractionSource() },
                                 onClick = {
-                                    if (pagerState.currentPage == page) {
-                                        switchCity(page)
+                                    if (currentIndex == index) {
+                                        switchCity(index)
                                     } else {
-                                        scope.launch { pagerState.animateScrollToPage(page) }
+                                        scope.launch {
+                                            lazyListState.animateScrollToItem(index)
+                                        }
                                     }
                                 }
                             )
@@ -328,6 +364,7 @@ fun WeatherCitySelector(
                         )
                     }
                 }
+            }
 
             // 选中后全屏放大快照（参照 Flutter AnimatedScale 0.6→1 + onEnd → dismiss）
             if (selectedIndex in snapshots.indices) {
