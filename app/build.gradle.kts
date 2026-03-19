@@ -134,4 +134,5 @@ dependencies {
     implementation(libs.reorderable)
     implementation(libs.coil.compose)
     implementation(libs.coil.network.okhttp)
+    implementation(libs.cloudy)
 }

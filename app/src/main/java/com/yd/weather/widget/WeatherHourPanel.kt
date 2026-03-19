@@ -39,7 +39,8 @@ fun WeatherHourPanel(
     isDark: Boolean = false,
     panelOpacity: Float = 0.1f,
     firstItemOffset: Float = 0f,
-    firstVisibleItemIndex: Int = 0
+    firstVisibleItemIndex: Int = 0,
+    enable: Boolean = true
 ) {
     val weatherData = item.weatherData
     val hourFc = weatherData?.hourFc
@@ -65,12 +66,14 @@ fun WeatherHourPanel(
                 color = colorResource(R.color.color_white).copy(alpha = 0.2f)
             )
             if (!hourFc.isNullOrEmpty()) {
+                val displayHourFc = if (enable) hourFc else hourFc.take(7)
                 LazyRow(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(26.dp)
+                    horizontalArrangement = Arrangement.spacedBy(26.dp),
+                    userScrollEnabled = enable
                 ) {
-                    items(hourFc) { item ->
+                    items(displayHourFc) { item ->
                         HourItem(item, currentWeatherDetailData)
                     }
                 }

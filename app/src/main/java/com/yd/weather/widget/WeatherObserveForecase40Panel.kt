@@ -89,13 +89,15 @@ fun WeatherObserveForecase40Panel(
                 .fillMaxHeight()
                 .padding(start = 16.dp, end = 16.dp)
                 .clip(WeatherPanelClip(offsetPx))
-                .clickable(
-                    indication = null,
-                    interactionSource = remember { MutableInteractionSource() },
-                ) {
-                    showHideWeatherContent?.invoke(false)
-                    showDetailPopup = true
-                },
+                .then(
+                    if (showHideWeatherContent != null) Modifier.clickable(
+                        indication = null,
+                        interactionSource = remember { MutableInteractionSource() },
+                    ) {
+                        showHideWeatherContent.invoke(false)
+                        showDetailPopup = true
+                    } else Modifier
+                ),
             verticalArrangement = Arrangement.Center
         ) {
             val upDays = weatherData?.forecast40V2?.upDays ?: 0

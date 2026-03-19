@@ -41,6 +41,7 @@ fun WeatherAirQualityPanel(
     panelOpacity: Float = 0.1f,
     firstItemOffset: Float = 0f,
     firstVisibleItemIndex: Int = 0,
+    enable: Boolean = true,
     showHideWeatherContent: ((Boolean) -> Unit)? = null
 ) {
     var showAirQualityDialog by remember { mutableStateOf(false) }
@@ -48,11 +49,11 @@ fun WeatherAirQualityPanel(
     var panelYPx by remember { mutableFloatStateOf(0f) }
     val weatherData = item.weatherData
 
-    if (showAirQualityDialog) {
+    if (enable && showAirQualityDialog) {
         AirQualityQueryDialog(onDismiss = { showAirQualityDialog = false })
     }
 
-    if (showDetailPopup) {
+    if (enable && showDetailPopup) {
         AirQualityDetailPopup(
             evn = weatherData?.evn,
             isDark = isDark,
@@ -69,7 +70,7 @@ fun WeatherAirQualityPanel(
     }
 
     WeatherStickyPanel(
-        modifier = Modifier
+        modifier = if (enable) Modifier
             .onGloballyPositioned { coordinates ->
                 panelYPx = coordinates.positionOnScreen().y
             }
@@ -79,7 +80,7 @@ fun WeatherAirQualityPanel(
             ) {
                 showHideWeatherContent?.invoke(false)
                 showDetailPopup = true
-            },
+            } else Modifier,
         index = index,
         isDark = isDark,
         panelOpacity = panelOpacity,
@@ -105,8 +106,7 @@ fun WeatherAirQualityPanel(
                     fontWeight = FontWeight.Medium
                 )
                 CommonIcon(
-                    modifier = Modifier
-                        .alphaClick { showAirQualityDialog = true }
+                    modifier = (if (enable) Modifier.alphaClick { showAirQualityDialog = true } else Modifier)
                         .padding(horizontal = 12.dp, vertical = 4.dp),
                     resId = R.mipmap.ic_query_icon,
                     size = 14.dp,

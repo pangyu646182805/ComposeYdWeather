@@ -22,6 +22,7 @@ fun WeatherObservePanel(
     panelOpacity: Float = 0.1f,
     firstItemOffset: Float = 0f,
     firstVisibleItemIndex: Int = 0,
+    enable: Boolean = true,
     showHideWeatherContent: ((Boolean) -> Unit)? = null
 ) {
     if (itemTypeObserves.isNullOrEmpty()) return
@@ -117,7 +118,7 @@ fun WeatherObservePanel(
                     panelOpacity = panelOpacity,
                     firstItemOffset = fixedFirstItemOffset,
                     firstVisibleItemIndex = fixedFirstVisibleItemIndex,
-                    showHideWeatherContent = showHideWeatherContent
+                    showHideWeatherContent = if (enable) showHideWeatherContent else null
                 )
             }
         }

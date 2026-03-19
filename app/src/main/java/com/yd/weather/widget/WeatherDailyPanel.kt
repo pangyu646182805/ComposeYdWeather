@@ -66,7 +66,8 @@ fun WeatherDailyPanel(
     isDark: Boolean = false,
     panelOpacity: Float = 0.1f,
     firstItemOffset: Float = 0f,
-    firstVisibleItemIndex: Int = 0
+    firstVisibleItemIndex: Int = 0,
+    enable: Boolean = true
 ) {
     var currentDailyWeatherType by remember {
         mutableStateOf(
@@ -103,7 +104,9 @@ fun WeatherDailyPanel(
         rightStickContent = {
             RightStickContent(
                 currentDailyWeatherType = currentDailyWeatherType,
+                enable = enable,
                 lineChartButtonClick = {
+                    if (!enable) return@RightStickContent
                     if (currentDailyWeatherType == Constants.LINE_CHART_DAILY_WEATHER) return@RightStickContent
                     MMKVUtils.putString(
                         Constants.CURRENT_DAILY_WEATHER_TYPE, Constants.LINE_CHART_DAILY_WEATHER
@@ -111,6 +114,7 @@ fun WeatherDailyPanel(
                     currentDailyWeatherType = Constants.LINE_CHART_DAILY_WEATHER
                 },
                 listButtonClick = {
+                    if (!enable) return@RightStickContent
                     if (currentDailyWeatherType == Constants.LIST_DAILY_WEATHER) return@RightStickContent
                     MMKVUtils.putString(
                         Constants.CURRENT_DAILY_WEATHER_TYPE, Constants.LIST_DAILY_WEATHER
@@ -153,13 +157,14 @@ fun WeatherDailyPanel(
 @Composable
 internal fun RightStickContent(
     currentDailyWeatherType: String = Constants.LIST_DAILY_WEATHER,
+    enable: Boolean = true,
     lineChartButtonClick: () -> Unit,
     listButtonClick: () -> Unit
 ) {
     WrapRow {
         AppText(
             modifier = Modifier
-                .alphaClick(onClick = lineChartButtonClick)
+                .then(if (enable) Modifier.alphaClick(onClick = lineChartButtonClick) else Modifier)
                 .height(Constants.ITEM_STICKY_HEIGHT.dp)
                 .wrapContentHeight(Alignment.CenterVertically)
                 .padding(horizontal = 12.dp),
@@ -175,7 +180,7 @@ internal fun RightStickContent(
         )
         AppText(
             modifier = Modifier
-                .alphaClick(onClick = listButtonClick)
+                .then(if (enable) Modifier.alphaClick(onClick = listButtonClick) else Modifier)
                 .height(Constants.ITEM_STICKY_HEIGHT.dp)
                 .wrapContentHeight(Alignment.CenterVertically)
                 .padding(horizontal = 12.dp),

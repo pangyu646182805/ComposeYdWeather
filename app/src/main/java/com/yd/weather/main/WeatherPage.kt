@@ -7,7 +7,10 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -37,8 +40,10 @@ import com.yd.weather.app.ViewState
 import com.yd.weather.component.CenterTopAppBar
 import com.yd.weather.component.MultipleStatusView
 import com.yd.weather.db.model.CityData
+import com.yd.weather.dialog.WeatherCitySelector
 import com.yd.weather.model.WeatherItemData
 import com.yd.weather.routes.CardSortRoutes
+import kotlinx.coroutines.withTimeoutOrNull
 import com.yd.weather.res.CommonIcon
 import com.yd.weather.utils.RefreshState
 import com.yd.weather.utils.WeatherContentClip
@@ -66,6 +71,7 @@ fun WeatherPage(
     // 保存 refreshState 引用，用于数据加载完成后调用 refreshComplete()
     val refreshStateRef = remember { mutableStateOf<RefreshState?>(null) }
     var topBarOpacity by remember { mutableFloatStateOf(1f) }
+    var showCitySelector by remember { mutableStateOf(false) }
     val animatable = remember { Animatable(if (isShowWeatherPage) 0f else 1f) }
     val predictiveBackProgress by mainViewModel.predictiveBackProgress.collectAsStateWithLifecycle()
 
@@ -107,7 +113,11 @@ fun WeatherPage(
             modifier = Modifier
                 .fillMaxSize()
                 .pointerInput(Unit) {
-                    detectTapGestures()
+                    detectTapGestures(
+                        onLongPress = {
+                            showCitySelector = true
+                        }
+                    )
                 }
                 .alpha(1 - ((animValue - 0.95f) / 0.05f).coerceIn(0f, 1f))
                 .clip(WeatherContentClip(animValue, mainViewModel.offsetY))
@@ -174,6 +184,18 @@ fun WeatherPage(
                 )
             }
         }
+    }
+
+    if (showCitySelector && !addedCities.isNullOrEmpty()) {
+        WeatherCitySelector(
+            addedCities = addedCities,
+            currentCityData = currentCityData,
+            appState = mainViewModel.appState(),
+            onSwitchCity = { cityData ->
+                mainViewModel.appState().setCurrentCityData(cityData)
+            },
+            onDismiss = { showCitySelector = false }
+        )
     }
 }
 

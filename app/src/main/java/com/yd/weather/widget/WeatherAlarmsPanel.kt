@@ -54,13 +54,14 @@ fun WeatherAlarmsPanel(
     panelOpacity: Float = 0.1f,
     firstItemOffset: Float = 0f,
     firstVisibleItemIndex: Int = 0,
+    enable: Boolean = true,
     showHideWeatherContent: ((Boolean) -> Unit)? = null
 ) {
     var showDetailPopup by remember { mutableStateOf(false) }
     var panelYPx by remember { mutableFloatStateOf(0f) }
     val weatherData = item.weatherData
 
-    if (showDetailPopup) {
+    if (enable && showDetailPopup) {
         WeatherAlarmsDetailPopup(
             alarms = weatherData?.alarms,
             isDark = isDark,
@@ -74,7 +75,7 @@ fun WeatherAlarmsPanel(
     }
 
     WeatherStickyPanel(
-        modifier = Modifier
+        modifier = if (enable) Modifier
             .onGloballyPositioned { coordinates ->
                 panelYPx = coordinates.positionOnScreen().y
             }
@@ -84,7 +85,7 @@ fun WeatherAlarmsPanel(
             ) {
                 showHideWeatherContent?.invoke(false)
                 showDetailPopup = true
-            },
+            } else Modifier,
         index = index,
         isDark = isDark,
         panelOpacity = panelOpacity,
