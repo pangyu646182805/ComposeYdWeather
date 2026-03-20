@@ -30,7 +30,7 @@ logcat = "1.2.4"
 xxpermissions = "28.0"
 reorderable = "3.0.0"
 coilCompose = "3.4.0"
-cloudy = "0.5.0"
+backdrop = "2.0.0-alpha03"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -70,7 +70,7 @@ xxpermissions = { module = "com.github.getActivity:XXPermissions", version.ref =
 reorderable = { module = "sh.calvin.reorderable:reorderable", version.ref = "reorderable" }
 coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coilCompose" }
 coil-network-okhttp = { module = "io.coil-kt.coil3:coil-network-okhttp", version.ref = "coilCompose" }
-cloudy = { module = "com.github.skydoves:cloudy", version.ref = "cloudy" }
+backdrop = { module = "io.github.kyant0:backdrop", version.ref = "backdrop" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
