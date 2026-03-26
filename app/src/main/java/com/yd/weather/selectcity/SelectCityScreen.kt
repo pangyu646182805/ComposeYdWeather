@@ -1,6 +1,5 @@
 package com.yd.weather.selectcity
 
-import androidx.compose.animation.AnimatedContentScope
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.core.tween
@@ -32,6 +31,8 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
@@ -61,6 +62,7 @@ import com.yd.weather.res.CommonIcon
 import com.yd.weather.res.YdWeatherAppTheme
 import com.yd.weather.utils.SetStatusBarStyle
 import com.yd.weather.utils.ToastUtils
+import com.yd.weather.utils.rememberElasticScrollState
 import com.yd.weather.viewmodel.SelectCityViewModel
 
 @OptIn(ExperimentalSharedTransitionApi::class)
@@ -215,10 +217,13 @@ private fun SelectCityGridContent(
 ) {
     val hotNational = selectCityData?.hotNational ?: arrayListOf()
     val hotInternational = selectCityData?.hotInternational ?: arrayListOf()
+    val elastic = rememberElasticScrollState()
     LazyVerticalGrid(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = 20.dp),
+            .padding(horizontal = 20.dp)
+            .nestedScroll(elastic.connection)
+            .graphicsLayer { translationY = elastic.overscrollOffset },
         columns = GridCells.Fixed(4),
         horizontalArrangement = Arrangement.spacedBy(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -298,6 +303,7 @@ private fun SelectCitySearchContent(
 ) {
     val focusManager = LocalFocusManager.current
     val listState = rememberLazyListState()
+    val elastic = rememberElasticScrollState()
 
     LaunchedEffect(listState.isScrollInProgress) {
         if (listState.isScrollInProgress) focusManager.clearFocus()
@@ -315,7 +321,9 @@ private fun SelectCitySearchContent(
         ) {
             LazyColumn(
                 state = listState,
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxSize()
+                    .nestedScroll(elastic.connection)
+                    .graphicsLayer { translationY = elastic.overscrollOffset },
                 contentPadding = PaddingValues(
                     bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
                 )

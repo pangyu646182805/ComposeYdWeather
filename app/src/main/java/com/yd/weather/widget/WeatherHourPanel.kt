@@ -1,9 +1,9 @@
 package com.yd.weather.widget
 
+import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.HorizontalDivider
@@ -12,6 +12,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -30,6 +32,7 @@ import com.yd.weather.utils.WeatherIconUtils
 import com.yd.weather.utils.WeatherPanelClip
 import com.yd.weather.utils.getFormatDate
 import com.yd.weather.utils.getToday
+import com.yd.weather.utils.rememberElasticScrollState
 import com.yd.weather.utils.toDateString
 
 @Composable
@@ -66,9 +69,12 @@ fun WeatherHourPanel(
                 color = colorResource(R.color.color_white).copy(alpha = 0.2f)
             )
             if (!hourFc.isNullOrEmpty()) {
+                val elastic = rememberElasticScrollState(orientation = Orientation.Horizontal)
                 val displayHourFc = if (enable) hourFc else hourFc.take(7)
                 LazyRow(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier.fillMaxSize()
+                        .nestedScroll(elastic.connection)
+                        .graphicsLayer { translationX = elastic.overscrollOffset },
                     contentPadding = PaddingValues(horizontal = 16.dp),
                     horizontalArrangement = Arrangement.spacedBy(26.dp),
                     userScrollEnabled = enable

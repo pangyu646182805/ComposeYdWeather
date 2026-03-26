@@ -6,6 +6,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -31,6 +32,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -55,6 +57,7 @@ import com.yd.weather.utils.WeatherIconUtils
 import com.yd.weather.utils.WeatherPanelClip
 import com.yd.weather.utils.formatDateStr
 import com.yd.weather.utils.isToday
+import com.yd.weather.utils.rememberElasticScrollState
 import kotlin.Boolean
 import kotlin.math.max
 import kotlin.math.min
@@ -201,8 +204,11 @@ internal fun LineChartDailyWeather(
 ) {
     if (forecast15.isNullOrEmpty()) return
     AnimatedVisibility(visible = visible, enter = fadeIn(), exit = fadeOut()) {
+        val elastic = rememberElasticScrollState(orientation = Orientation.Horizontal)
         LazyRow(
             modifier = Modifier.fillMaxSize()
+                .nestedScroll(elastic.connection)
+                .graphicsLayer { translationX = elastic.overscrollOffset }
         ) {
             itemsIndexed(forecast15) { index, item ->
                 LineChartDailyWeatherItem(item, index, weatherData)

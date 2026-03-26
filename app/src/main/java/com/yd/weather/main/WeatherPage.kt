@@ -132,12 +132,12 @@ fun WeatherPage(
                     brush = Brush.verticalGradient(colors = listOf(startColor, endColor))
                 )
         ) {
-            val backgroundColor = Color.White.copy(alpha = 0.4f)
+            /*val backgroundColor = Color.White.copy(alpha = 0.4f)
             val backdrop = rememberLayerBackdrop {
                 drawRect(backgroundColor)
                 drawContent()
-            }
-            Box(modifier = Modifier.fillMaxSize().layerBackdrop(backdrop)) {
+            }*/
+            Box(modifier = Modifier.fillMaxSize()/*.layerBackdrop(backdrop)*/) {
                 val isSystemInDarkTheme = isSystemInDarkTheme()
                 if (isSystemInDarkTheme) {
                     Box(
@@ -195,7 +195,7 @@ fun WeatherPage(
                     },
                 )
             }
-            Box(
+            /*Box(
                 Modifier
                     .safeContentPadding()
                     .drawBackdrop(
@@ -211,7 +211,7 @@ fun WeatherPage(
                     .height(64f.dp)
                     .fillMaxWidth()
                     .align(Alignment.BottomCenter)
-            )
+            )*/
         }
     }
 

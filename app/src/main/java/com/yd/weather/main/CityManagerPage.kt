@@ -50,7 +50,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionOnScreen
@@ -83,6 +85,7 @@ import com.yd.weather.res.CommonIcon
 import com.yd.weather.utils.Commons
 import com.yd.weather.utils.ObserveListAddition
 import com.yd.weather.utils.getToday
+import com.yd.weather.utils.rememberElasticScrollState
 import com.yd.weather.viewmodel.CityManagerViewModel
 import com.yd.weather.viewmodel.MainViewModel
 import kotlinx.coroutines.launch
@@ -208,7 +211,8 @@ fun CityManagerPage(
                     viewModel.listOffsetY = it.positionOnScreen().y
                     viewModel.listHeight = it.size.height
                     println("listHeight = ${viewModel.listHeight}")
-                }, contentAlignment = Alignment.BottomCenter
+                }
+                .graphicsLayer(clip = true), contentAlignment = Alignment.BottomCenter
         ) {
             CityList(
                 addedCities = addedCities,
@@ -318,6 +322,7 @@ fun CityList(
     var draggingIndex by remember { mutableStateOf<Int?>(null) }
     val hapticFeedback = LocalHapticFeedback.current
     var openedItemKey by remember { mutableStateOf<String?>(null) }
+    val elastic = rememberElasticScrollState()
 
     val reorderableLazyListState = rememberReorderableLazyListState(scrollState) { from, to ->
         // Update the list
@@ -333,7 +338,9 @@ fun CityList(
     LazyColumn(
         state = scrollState,
         modifier = Modifier
-            .fillMaxSize(),
+            .fillMaxSize()
+            .nestedScroll(elastic.connection)
+            .graphicsLayer { translationY = elastic.overscrollOffset },
         verticalArrangement = Arrangement.spacedBy(12.dp),
         contentPadding = PaddingValues(
             bottom = WindowInsets.navigationBars.asPaddingValues()
