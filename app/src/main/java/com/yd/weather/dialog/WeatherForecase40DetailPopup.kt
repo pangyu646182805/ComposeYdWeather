@@ -1,6 +1,9 @@
 package com.yd.weather.dialog
 
+import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -67,6 +70,8 @@ import com.yd.weather.utils.WeatherIconUtils
 import com.yd.weather.utils.getFormatDate
 import com.yd.weather.utils.isToday
 import com.yd.weather.utils.toDateString
+import kotlin.coroutines.cancellation.CancellationException
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.Calendar
@@ -155,10 +160,33 @@ fun WeatherForecase40DetailPopup(
     // Calendar alignment: panel position → Start
     val isStartAligned = panelAlignment == Alignment.Start
 
+    // 预测返回手势
+    PredictiveBackHandler(enabled = true) { progress ->
+        try {
+            progress.collect { backEvent ->
+                val p = backEvent.progress
+                animProgress.snapTo(1f - p)
+                contentAlpha.snapTo(1f - p)
+                titleBarAlpha.snapTo((1f - p * 2f).coerceIn(0f, 1f))
+            }
+            coroutineScope {
+                launch { titleBarAlpha.animateTo(0f, tween(100)) }
+                launch { animProgress.animateTo(0f, tween(100)) }
+                contentAlpha.animateTo(0f, tween(100))
+            }
+            onDismiss()
+        } catch (_: CancellationException) {
+            coroutineScope {
+                launch { animProgress.animateTo(1f, spring(stiffness = Spring.StiffnessLow)) }
+                launch { contentAlpha.animateTo(1f, spring(stiffness = Spring.StiffnessLow)) }
+                titleBarAlpha.animateTo(1f, spring(stiffness = Spring.StiffnessLow))
+            }
+        }
+    }
+
     Popup(
         alignment = Alignment.TopStart,
-        properties = PopupProperties(focusable = true),
-        onDismissRequest = exit
+        properties = PopupProperties(focusable = false),
     ) {
         Column(
             modifier = Modifier

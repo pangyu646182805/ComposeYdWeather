@@ -1,6 +1,9 @@
 package com.yd.weather.dialog
 
+import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -50,7 +53,9 @@ import com.yd.weather.config.Constants
 import com.yd.weather.model.WeatherAlarmsData
 import com.yd.weather.utils.getFormatDate
 import com.yd.weather.utils.getToday
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.math.roundToLong
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -106,10 +111,30 @@ fun WeatherAlarmsDetailPopup(
 
     val pagerState = rememberPagerState(pageCount = { alarms.size })
 
+    // 预测返回手势
+    PredictiveBackHandler(enabled = true) { progress ->
+        try {
+            progress.collect { backEvent ->
+                val p = backEvent.progress
+                animProgress.snapTo(1f - p)
+                panelAlpha.snapTo(1f - p * 0.5f)
+            }
+            coroutineScope {
+                launch { animProgress.animateTo(0f, tween(100)) }
+                panelAlpha.animateTo(0f, tween(150))
+            }
+            onDismiss()
+        } catch (_: CancellationException) {
+            coroutineScope {
+                launch { animProgress.animateTo(1f, spring(stiffness = Spring.StiffnessLow)) }
+                panelAlpha.animateTo(1f, spring(stiffness = Spring.StiffnessLow))
+            }
+        }
+    }
+
     Popup(
         alignment = Alignment.TopStart,
-        properties = PopupProperties(focusable = true),
-        onDismissRequest = exit
+        properties = PopupProperties(focusable = false),
     ) {
         Box(
             modifier = Modifier

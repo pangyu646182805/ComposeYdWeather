@@ -12,11 +12,8 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.safeContentPadding
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.TopAppBarDefaults.topAppBarColors
 import androidx.compose.runtime.Composable
@@ -39,10 +36,6 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
-import com.kyant.backdrop.drawBackdrop
-import com.kyant.backdrop.effects.blur
-import com.kyant.backdrop.effects.lens
-import com.kyant.backdrop.effects.vibrancy
 import com.yd.weather.R
 import com.yd.weather.app.ViewState
 import com.yd.weather.component.CenterTopAppBar
@@ -105,6 +98,9 @@ fun WeatherPage(
     }
 
     val animValue = animatable.value
+    val backdrop = rememberLayerBackdrop {
+        drawContent()
+    }
     if (animValue < 1) {
         val startColor by animateColorAsState(
             targetValue = weatherBg[0],
@@ -128,95 +124,74 @@ fun WeatherPage(
                 }
                 .alpha(1 - ((animValue - 0.95f) / 0.05f).coerceIn(0f, 1f))
                 .clip(WeatherContentClip(animValue, mainViewModel.offsetY))
+                .layerBackdrop(backdrop)
                 .background(
                     brush = Brush.verticalGradient(colors = listOf(startColor, endColor))
                 )
         ) {
-            /*val backgroundColor = Color.White.copy(alpha = 0.4f)
-            val backdrop = rememberLayerBackdrop {
-                drawRect(backgroundColor)
-                drawContent()
-            }*/
-            Box(modifier = Modifier.fillMaxSize()/*.layerBackdrop(backdrop)*/) {
-                val isSystemInDarkTheme = isSystemInDarkTheme()
-                if (isSystemInDarkTheme) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(
-                                brush = Brush.verticalGradient(
-                                    colors = listOf(
-                                        colorResource(R.color.color_black).copy(alpha = 0.25f),
-                                        colorResource(R.color.color_black).copy(alpha = 0.15f)
-                                    )
+            val isSystemInDarkTheme = isSystemInDarkTheme()
+            if (isSystemInDarkTheme) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            brush = Brush.verticalGradient(
+                                colors = listOf(
+                                    colorResource(R.color.color_black).copy(alpha = 0.25f),
+                                    colorResource(R.color.color_black).copy(alpha = 0.15f)
                                 )
                             )
-                    )
-                }
-                MultipleStatusView(
-                    viewState = viewState,
-                    loadingColor = colorResource(if (isDark) R.color.color_white else R.color.color_black)
-                ) {
-                    WeatherContentList(
-                        weatherScrollState = weatherScrollState,
-                        isShowWeatherPage = isShowWeatherPage,
-                        animValue = animValue,
-                        isDark = isDark,
-                        panelOpacity = panelOpacity,
-                        isWeatherHeaderDark = isWeatherHeaderDark,
-                        currentCityData = currentCityData,
-                        weatherItems = weatherItems,
-                        itemTypeObserves = itemTypeObserves,
-                        onRefresh = {
-                            mainViewModel.refreshWeatherData { refreshStateRef.value?.refreshComplete() }
-                        },
-                        onRefreshState = { refreshStateRef.value = it },
-                        onContentVisibilityChange = { show -> topBarOpacity = if (show) 1f else 0f },
-                        onCardSortButtonClick = {
-                            mainViewModel.navigate(CardSortRoutes.CardSort)
-                        }
-                    )
-                }
-                val animatedTopBarOpacity by animateFloatAsState(
-                    targetValue = topBarOpacity,
-                    animationSpec = tween(durationMillis = 200),
-                    label = "topBarOpacity"
-                )
-                CenterTopAppBar(
-                    modifier = Modifier.alpha(animatedTopBarOpacity),
-                    showBackIcon = false,
-                    colors = topAppBarColors(containerColor = colorResource(R.color.transparent)),
-                    actions = {
-                        RightIcon(isWeatherHeaderDark = isWeatherHeaderDark) {
-                            mainViewModel.showCityManagerPage(
-                                cityManagerViewModel, cityManagerScrollState
-                            )
-                        }
-                    },
+                        )
                 )
             }
-            /*Box(
-                Modifier
-                    .safeContentPadding()
-                    .drawBackdrop(
-                        backdrop = backdrop,
-                        shape = { CircleShape },
-                        effects = {
-                            vibrancy()
-                            // blur(4f.dp.toPx())
-                            lens(16f.dp.toPx(), 32f.dp.toPx())
-                        },
-                        onDrawSurface = { drawRect(Color.White.copy(alpha = 0.5f)) }
-                    )
-                    .height(64f.dp)
-                    .fillMaxWidth()
-                    .align(Alignment.BottomCenter)
-            )*/
+            MultipleStatusView(
+                viewState = viewState,
+                loadingColor = colorResource(if (isDark) R.color.color_white else R.color.color_black)
+            ) {
+                WeatherContentList(
+                    weatherScrollState = weatherScrollState,
+                    isShowWeatherPage = isShowWeatherPage,
+                    animValue = animValue,
+                    isDark = isDark,
+                    panelOpacity = panelOpacity,
+                    isWeatherHeaderDark = isWeatherHeaderDark,
+                    currentCityData = currentCityData,
+                    weatherItems = weatherItems,
+                    itemTypeObserves = itemTypeObserves,
+                    onRefresh = {
+                        mainViewModel.refreshWeatherData { refreshStateRef.value?.refreshComplete() }
+                    },
+                    onRefreshState = { refreshStateRef.value = it },
+                    onContentVisibilityChange = { show -> topBarOpacity = if (show) 1f else 0f },
+                    onCardSortButtonClick = {
+                        mainViewModel.navigate(CardSortRoutes.CardSort)
+                    }
+                )
+            }
+            val animatedTopBarOpacity by animateFloatAsState(
+                targetValue = topBarOpacity,
+                animationSpec = tween(durationMillis = 200),
+                label = "topBarOpacity"
+            )
+            CenterTopAppBar(
+                modifier = Modifier.alpha(animatedTopBarOpacity),
+                showBackIcon = false,
+                colors = topAppBarColors(containerColor = colorResource(R.color.transparent)),
+                actions = {
+                    RightIcon(isWeatherHeaderDark = isWeatherHeaderDark) {
+                        mainViewModel.showCityManagerPage(
+                            cityManagerViewModel, cityManagerScrollState
+                        )
+                    }
+                },
+            )
         }
     }
 
+    // 城市选择器 — 在 clipped Box 外部，不受裁剪影响
     if (showCitySelector && !addedCities.isNullOrEmpty()) {
         WeatherCitySelector(
+            backdrop = backdrop,
             addedCities = addedCities,
             currentCityData = currentCityData,
             appState = mainViewModel.appState(),

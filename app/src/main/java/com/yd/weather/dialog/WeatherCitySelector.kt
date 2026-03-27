@@ -1,20 +1,17 @@
 package com.yd.weather.dialog
 
 import android.annotation.SuppressLint
-import android.graphics.Bitmap
-import android.graphics.RenderEffect
-import android.graphics.Shader
-import android.os.Build
-import android.view.View
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -45,18 +42,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asComposeRenderEffect
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import com.kyant.backdrop.Backdrop
+import com.kyant.backdrop.drawBackdrop
+import com.kyant.backdrop.effects.blur
 import com.yd.weather.R
 import com.yd.weather.app.AppState
 import com.yd.weather.component.AppText
@@ -64,18 +60,19 @@ import com.yd.weather.component.bounceClick
 import com.yd.weather.config.Constants
 import com.yd.weather.db.model.CityData
 import com.yd.weather.model.WeatherItemData
+import com.yd.weather.utils.rememberElasticScrollState
 import com.yd.weather.widget.WeatherCitySnapshot
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.abs
-import androidx.core.graphics.createBitmap
 
 /**
- * 天气城市选择器弹窗（参照鸿蒙 WeatherCitySelector）
+ * 天气城市选择器（使用 Backdrop 实时模糊）
  */
 @SuppressLint("ConfigurationScreenWidthHeight", "FrequentlyChangingValue")
 @Composable
 fun WeatherCitySelector(
+    backdrop: Backdrop,
     addedCities: List<CityData>,
     currentCityData: CityData?,
     appState: AppState,
@@ -93,10 +90,6 @@ fun WeatherCitySelector(
     val configuration = LocalConfiguration.current
     val screenWidthDp = configuration.screenWidthDp
     val screenHeightDp = configuration.screenHeightDp
-
-    // 截取当前页面作为模糊背景
-    val view = LocalView.current
-    val blurBitmap = remember { captureBlurBitmap(view) }
 
     // 背景模糊淡入/淡出
     val blurAlpha = remember { Animatable(0f) }
@@ -151,7 +144,11 @@ fun WeatherCitySelector(
     }
 
     // Swiper 水平位移动画（参照鸿蒙 translate + interpolatingSpring）
-    val swiperTranslateX = remember { Animatable(with(density) { -screenWidthDp.dp.toPx() }) }
+    // 入场从 -screenWidth 滑入；退场需滑到 -(screenWidth + itemWidth) 确保最右侧 item 也完全离开视口
+    val screenWidthPx = with(density) { screenWidthDp.dp.toPx() }
+    val itemWidthDp = screenWidthDp * 0.6f
+    val itemWidthPx = with(density) { itemWidthDp.dp.toPx() }
+    val swiperTranslateX = remember { Animatable(-screenWidthPx) }
 
     // 入场动画（参照鸿蒙 aboutToAppear）
     LaunchedEffect(Unit) {
@@ -160,7 +157,7 @@ fun WeatherCitySelector(
         isSwiperShow = true
     }
 
-    // isSwiperShow 驱动 Swiper 滑入/滑出
+    // isSwiperShow 驱动 Swiper 滑入
     LaunchedEffect(isSwiperShow) {
         if (isSwiperShow) {
             swiperTranslateX.animateTo(
@@ -170,24 +167,28 @@ fun WeatherCitySelector(
                     dampingRatio = Spring.DampingRatioNoBouncy
                 )
             )
-        } else {
-            swiperTranslateX.animateTo(
-                with(density) { -screenWidthDp.dp.toPx() },
-                tween(200)
-            )
         }
     }
 
     // 关闭弹窗（参照 Flutter exit + _dismiss）
     val exit: () -> Unit = {
         scope.launch {
-            // Swiper 滑出 + 背景淡出
-            isSwiperShow = false
-            launch { blurAlpha.animateTo(0f, tween(200)) }
-            delay(200)
+            // Swiper 滑出 + 背景淡出（同时进行，等滑出完成再关闭）
+            // 背景稍晚淡出，避免背景先消失而卡片还在
+            launch {
+                delay(100)
+                blurAlpha.animateTo(0f, tween(250, easing = FastOutSlowInEasing))
+            }
+            swiperTranslateX.animateTo(
+                -(screenWidthPx + itemWidthPx),
+                tween(300, easing = FastOutSlowInEasing)
+            )
             onDismiss()
         }
     }
+
+    // 返回键处理
+    BackHandler(onBack = exit)
 
     // 切换城市（参照 Flutter _switchWeatherCity）
     val switchCity: (Int) -> Unit = { index ->
@@ -200,178 +201,131 @@ fun WeatherCitySelector(
             onSwitchCity(snapshots[index].cityData)
             // 4. 同时：Swiper 淡出 + 快照放大到全屏
             swiperOpacity = 0f
-            scaleAnim.animateTo(1f, tween(400, easing = androidx.compose.animation.core.FastOutSlowInEasing))
+            scaleAnim.animateTo(1f, tween(400, easing = FastOutSlowInEasing))
             // 5. 放大完成后关闭
             onDismiss()
         }
     }
 
-    Dialog(
-        onDismissRequest = exit,
-        properties = DialogProperties(
-            usePlatformDefaultWidth = false,
-            decorFitsSystemWindows = false
+    Box(modifier = Modifier
+        .fillMaxSize()
+        .clickable(
+            indication = null,
+            interactionSource = remember { MutableInteractionSource() },
+            onClick = exit
         )
     ) {
-        // 去掉 Dialog dim
-        val dialogView = LocalView.current
-        LaunchedEffect(dialogView) {
-            try {
-                val rootView = dialogView.rootView
-                (rootView.layoutParams as? android.view.WindowManager.LayoutParams)?.let { lp ->
-                    lp.dimAmount = 0f
-                    lp.flags = lp.flags or android.view.WindowManager.LayoutParams.FLAG_DIM_BEHIND
-                    val wm = rootView.context.getSystemService(
-                        android.content.Context.WINDOW_SERVICE
-                    ) as android.view.WindowManager
-                    wm.updateViewLayout(rootView, lp)
-                }
-            } catch (_: Exception) {
-            }
+        // Backdrop 实时模糊背景
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .alpha(blurAlpha.value)
+                .drawBackdrop(
+                    backdrop = backdrop,
+                    shape = { RectangleShape },
+                    effects = {
+                        blur(with(density) { 30.dp.toPx() })
+                    },
+                    onDrawSurface = {
+                        drawRect(Color.Black.copy(alpha = 0.15f))
+                    }
+                )
+                .clickable(
+                    indication = null,
+                    interactionSource = remember { MutableInteractionSource() },
+                    onClick = exit
+                )
+        )
+
+        // "更改天气背景"按钮（参照鸿蒙 changeWeatherBgButton）
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .navigationBarsPadding()
+                .padding(bottom = 32.dp)
+                .alpha(blurAlpha.value)
+        ) {
+            AppText(
+                modifier = Modifier
+                    .bounceClick(onClick = exit)
+                    .background(
+                        Color.Black.copy(alpha = 0.2f),
+                        RoundedCornerShape(100.dp)
+                    )
+                    .border(
+                        0.5.dp,
+                        Color.White.copy(alpha = 0.5f),
+                        RoundedCornerShape(100.dp)
+                    )
+                    .padding(horizontal = 24.dp, vertical = 10.dp),
+                text = "更改天气背景",
+                fontSize = 16.sp,
+                color = colorResource(R.color.color_white)
+            )
         }
 
-        Box(modifier = Modifier.fillMaxSize()) {
-            // 模糊背景（参照鸿蒙 blur(blurAnimValue * 100)）
-            if (blurBitmap != null) {
-                Image(
-                    bitmap = blurBitmap.asImageBitmap(),
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .alpha(blurAlpha.value)
-                        .graphicsLayer {
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                                renderEffect = RenderEffect
-                                    .createBlurEffect(80f, 80f, Shader.TileMode.CLAMP)
-                                    .asComposeRenderEffect()
-                            }
-                        }
-                )
-            }
+        // LazyRow + snap 卡片
+        val animatedSwiperOpacity by animateFloatAsState(
+            targetValue = swiperOpacity,
+            animationSpec = tween(200),
+            label = "swiperOpacity"
+        )
+        val horizontalPadding = ((screenWidthDp - itemWidthDp) / 2f).dp
 
-            // 半透明蒙层（参照鸿蒙 backgroundColor alpha 0.15）
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .alpha(blurAlpha.value)
-                    .background(Color.Black.copy(alpha = 0.15f))
-                    .clickable(
-                        indication = null,
-                        interactionSource = remember { MutableInteractionSource() },
-                        onClick = exit
-                    )
-            )
-
-            // "更改天气背景"按钮（参照鸿蒙 changeWeatherBgButton）
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .navigationBarsPadding()
-                    .padding(bottom = 32.dp)
-                    .alpha(blurAlpha.value)
-            ) {
-                AppText(
-                    modifier = Modifier
-                        .bounceClick(onClick = exit)
-                        .background(
-                            Color.Black.copy(alpha = 0.2f),
-                            RoundedCornerShape(100.dp)
-                        )
-                        .border(
-                            0.5.dp,
-                            Color.White.copy(alpha = 0.5f),
-                            RoundedCornerShape(100.dp)
-                        )
-                        .padding(horizontal = 24.dp, vertical = 10.dp),
-                    text = "更改天气背景",
-                    fontSize = 16.sp,
-                    color = colorResource(R.color.color_white)
-                )
-            }
-
-            // LazyRow + snap 卡片
-            val animatedSwiperOpacity by androidx.compose.animation.core.animateFloatAsState(
-                targetValue = swiperOpacity,
-                animationSpec = tween(200),
-                label = "swiperOpacity"
-            )
-            val itemWidthDp = screenWidthDp * 0.6f
-            val horizontalPadding = ((screenWidthDp - itemWidthDp) / 2f).dp
-
-            LazyRow(
-                state = lazyListState,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height((screenHeightDp * 0.6f).dp)
-                    .align(Alignment.Center)
-                    .alpha(animatedSwiperOpacity)
-                    .graphicsLayer {
-                        translationX = swiperTranslateX.value
-                        clip = false
-                    },
-                contentPadding = PaddingValues(horizontal = horizontalPadding),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                flingBehavior = snapFlingBehavior
-            ) {
-                itemsIndexed(snapshots, key = { i, _ -> i }) { index, snapshot ->
-                    // 计算当前 item 相对于视口中心的偏移比例
-                    val itemOffset by remember {
-                        derivedStateOf {
-                            val layoutInfo = lazyListState.layoutInfo
-                            val itemInfo = layoutInfo.visibleItemsInfo.find { it.index == index }
-                                ?: return@derivedStateOf 1f
-                            val viewportCenter = layoutInfo.viewportStartOffset +
-                                    (layoutInfo.viewportEndOffset - layoutInfo.viewportStartOffset) / 2f
-                            val itemCenter = itemInfo.offset + itemInfo.size / 2f
-                            abs(itemCenter - viewportCenter) / itemInfo.size.toFloat()
-                        }
-                    }
-                    val itemScale = 1f - itemOffset.coerceIn(0f, 1f) * 0.1f
-
-                    Box(
-                        modifier = Modifier
-                            .width(itemWidthDp.dp)
-                            .height((screenHeightDp * 0.6f).dp)
-                            .graphicsLayer {
-                                scaleX = itemScale
-                                scaleY = itemScale
-                            }
-                            .clip(RoundedCornerShape(16.dp))
-                            .clickable(
-                                indication = null,
-                                interactionSource = remember { MutableInteractionSource() },
-                                onClick = {
-                                    if (currentIndex == index) {
-                                        switchCity(index)
-                                    } else {
-                                        scope.launch {
-                                            lazyListState.animateScrollToItem(index)
-                                        }
-                                    }
-                                }
-                            )
-                    ) {
-                        WeatherCitySnapshot(
-                            cityData = snapshot.cityData,
-                            weatherItems = snapshot.weatherItems,
-                            weatherBg = snapshot.weatherBg,
-                            isDark = snapshot.isDark,
-                            isWeatherHeaderDark = snapshot.isWeatherHeaderDark,
-                            panelOpacity = snapshot.panelOpacity,
-                            itemTypeObserves = snapshot.itemTypeObserves,
-                            scale = 0.6f
-                        )
+        val elastic = rememberElasticScrollState(orientation = Orientation.Horizontal)
+        LazyRow(
+            state = lazyListState,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height((screenHeightDp * 0.6f).dp)
+                .nestedScroll(elastic.connection)
+                .align(Alignment.Center)
+                .graphicsLayer {
+                    alpha = animatedSwiperOpacity
+                    translationX = elastic.overscrollOffset
+                },
+            contentPadding = PaddingValues(horizontal = horizontalPadding),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            flingBehavior = snapFlingBehavior
+        ) {
+            itemsIndexed(snapshots, key = { i, _ -> i }) { index, snapshot ->
+                // 计算当前 item 相对于视口中心的偏移比例
+                val itemOffset by remember {
+                    derivedStateOf {
+                        val layoutInfo = lazyListState.layoutInfo
+                        val itemInfo = layoutInfo.visibleItemsInfo.find { it.index == index }
+                            ?: return@derivedStateOf 1f
+                        val viewportCenter = layoutInfo.viewportStartOffset +
+                                (layoutInfo.viewportEndOffset - layoutInfo.viewportStartOffset) / 2f
+                        val itemCenter = itemInfo.offset + itemInfo.size / 2f
+                        abs(itemCenter - viewportCenter) / itemInfo.size.toFloat()
                     }
                 }
-            }
+                val itemScale = 1f - itemOffset.coerceIn(0f, 1f) * 0.1f
 
-            // 选中后全屏放大快照（参照 Flutter AnimatedScale 0.6→1 + onEnd → dismiss）
-            if (selectedIndex in snapshots.indices) {
-                val snapshot = snapshots[selectedIndex]
                 Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
+                    modifier = Modifier
+                        .width(itemWidthDp.dp)
+                        .height((screenHeightDp * 0.6f).dp)
+                        .graphicsLayer {
+                            scaleX = itemScale
+                            scaleY = itemScale
+                            translationX = swiperTranslateX.value
+                        }
+                        .clip(RoundedCornerShape(16.dp))
+                        .clickable(
+                            indication = null,
+                            interactionSource = remember { MutableInteractionSource() },
+                            onClick = {
+                                if (currentIndex == index) {
+                                    switchCity(index)
+                                } else {
+                                    scope.launch {
+                                        lazyListState.animateScrollToItem(index)
+                                    }
+                                }
+                            }
+                        )
                 ) {
                     WeatherCitySnapshot(
                         cityData = snapshot.cityData,
@@ -381,24 +335,31 @@ fun WeatherCitySelector(
                         isWeatherHeaderDark = snapshot.isWeatherHeaderDark,
                         panelOpacity = snapshot.panelOpacity,
                         itemTypeObserves = snapshot.itemTypeObserves,
-                        scale = scaleAnim.value
+                        scale = 0.6f
                     )
                 }
             }
         }
-    }
-}
 
-/** 截取当前 View 的 Bitmap 用于模糊背景 */
-private fun captureBlurBitmap(view: View): Bitmap? {
-    return try {
-        if (view.width <= 0 || view.height <= 0) return null
-        val bitmap = createBitmap(view.width, view.height)
-        val canvas = android.graphics.Canvas(bitmap)
-        view.draw(canvas)
-        bitmap
-    } catch (_: Exception) {
-        null
+        // 选中后全屏放大快照（参照 Flutter AnimatedScale 0.6→1 + onEnd → dismiss）
+        if (selectedIndex in snapshots.indices) {
+            val snapshot = snapshots[selectedIndex]
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                WeatherCitySnapshot(
+                    cityData = snapshot.cityData,
+                    weatherItems = snapshot.weatherItems,
+                    weatherBg = snapshot.weatherBg,
+                    isDark = snapshot.isDark,
+                    isWeatherHeaderDark = snapshot.isWeatherHeaderDark,
+                    panelOpacity = snapshot.panelOpacity,
+                    itemTypeObserves = snapshot.itemTypeObserves,
+                    scale = scaleAnim.value
+                )
+            }
+        }
     }
 }
 

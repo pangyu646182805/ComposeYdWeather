@@ -1,6 +1,9 @@
 package com.yd.weather.dialog
 
+import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -47,6 +50,8 @@ import com.yd.weather.config.Constants
 import com.yd.weather.model.WeatherEnvData
 import com.yd.weather.res.CommonIcon
 import com.yd.weather.widget.AirQualityBar
+import kotlin.coroutines.cancellation.CancellationException
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -107,10 +112,35 @@ fun AirQualityDetailPopup(
     } else 0f
     val currentOffsetY = startOffsetY * (1f - animProgress.value)
 
+    // 预测返回手势：放在 Popup 外面（主 composition），Popup 改为非焦点模式
+    PredictiveBackHandler(enabled = true) { progress ->
+        try {
+            progress.collect { backEvent ->
+                val p = backEvent.progress
+                // 反向入场动画：居中(1) → 面板原位(0)
+                animProgress.snapTo(1f - p)
+                // 污染物网格先消失
+                contentAlpha.snapTo((1f - p * 2f).coerceIn(0f, 1f))
+            }
+            // 手势完成 → 快速收尾 + 关闭
+            coroutineScope {
+                launch { contentAlpha.animateTo(0f, tween(100)) }
+                launch { animProgress.animateTo(0f, tween(100)) }
+            }
+            panelAlpha.animateTo(0f, tween(150))
+            onDismiss()
+        } catch (_: CancellationException) {
+            // 手势取消 → 弹回完全显示
+            coroutineScope {
+                launch { animProgress.animateTo(1f, spring(stiffness = Spring.StiffnessLow)) }
+                launch { contentAlpha.animateTo(1f, spring(stiffness = Spring.StiffnessLow)) }
+            }
+        }
+    }
+
     Popup(
         alignment = Alignment.TopStart,
-        properties = PopupProperties(focusable = true),
-        onDismissRequest = exit
+        properties = PopupProperties(focusable = false),
     ) {
         Box(
             modifier = Modifier
