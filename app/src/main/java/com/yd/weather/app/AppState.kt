@@ -169,6 +169,38 @@ class AppState @Inject constructor(
         return this._weatherBgMap.value
     }
 
+    fun getPublicWeatherBgMap(): Map<String, List<WeatherBgModel>> {
+        return getWeatherBgMap()
+    }
+
+    fun setCurrentWeatherBg(weatherType: String, model: WeatherBgModel) {
+        val map = getWeatherBgMap().toMutableMap()
+        val list = map[weatherType]?.map {
+            it.copy(isSelected = it == model)
+        } ?: return
+        map[weatherType] = list
+        _weatherBgMap.value = map
+        MMKVUtils.putObject(Constants.CURRENT_WEATHER_BG_MAP, map)
+    }
+
+    fun removeWeatherBg(weatherType: String, model: WeatherBgModel) {
+        val map = getWeatherBgMap().toMutableMap()
+        val list = map[weatherType]?.toMutableList() ?: return
+        val index = list.indexOfFirst { it == model }
+        if (index >= 0) list.removeAt(index)
+        if (model.isSelected && list.isNotEmpty()) {
+            list[0] = list[0].copy(isSelected = true)
+        }
+        map[weatherType] = list
+        _weatherBgMap.value = map
+        MMKVUtils.putObject(Constants.CURRENT_WEATHER_BG_MAP, map)
+    }
+
+    fun removeAllWeatherBg() {
+        _weatherBgMap.value = defaultWeatherBgMap.toMap()
+        MMKVUtils.putObject(Constants.CURRENT_WEATHER_BG_MAP, defaultWeatherBgMap)
+    }
+
     fun generateWeatherBg(
         weatherData: WeatherData?,
         cacheWeatherType: String? = null,

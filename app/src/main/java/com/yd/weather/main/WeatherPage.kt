@@ -198,7 +198,10 @@ fun WeatherPage(
             onSwitchCity = { cityData ->
                 mainViewModel.appState().setCurrentCityData(cityData)
             },
-            onDismiss = { showCitySelector = false }
+            onDismiss = { showCitySelector = false },
+            onNavigateToWeatherBgList = {
+                mainViewModel.navigate(com.yd.weather.routes.WeatherBgRoutes.WeatherBgList)
+            }
         )
     }
 }

@@ -77,7 +77,8 @@ fun WeatherCitySelector(
     currentCityData: CityData?,
     appState: AppState,
     onSwitchCity: (CityData) -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onNavigateToWeatherBgList: () -> Unit = {}
 ) {
     // 空列表保护
     if (addedCities.isEmpty()) {
@@ -247,7 +248,10 @@ fun WeatherCitySelector(
         ) {
             AppText(
                 modifier = Modifier
-                    .bounceClick(onClick = exit)
+                    .bounceClick(onClick = {
+                        onDismiss()
+                        onNavigateToWeatherBgList()
+                    })
                     .background(
                         Color.Black.copy(alpha = 0.2f),
                         RoundedCornerShape(100.dp)
