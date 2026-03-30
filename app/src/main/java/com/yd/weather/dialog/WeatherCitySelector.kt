@@ -1,7 +1,7 @@
 package com.yd.weather.dialog
 
 import android.annotation.SuppressLint
-import androidx.activity.compose.BackHandler
+import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
@@ -71,6 +71,7 @@ fun WeatherCitySelector(
     addedCities: List<CityData>,
     currentCityData: CityData?,
     appState: AppState,
+    onBlurChange: (Float) -> Unit = {},
     onSwitchCity: (cityData: CityData, isSameCity: Boolean) -> Unit,
     onDismiss: () -> Unit,
     onNavigateToWeatherBgList: () -> Unit = {}
@@ -146,6 +147,11 @@ fun WeatherCitySelector(
     val itemWidthPx = with(density) { itemWidthDp.dp.toPx() }
     val swiperTranslateX = remember { Animatable(-screenWidthPx) }
 
+    // blurAlpha 变化时同步模糊值到外部（0~1 → 0~30dp）
+    LaunchedEffect(blurAlpha.value) {
+        onBlurChange(blurAlpha.value * 30f)
+    }
+
     // 入场动画（参照鸿蒙 aboutToAppear）
     LaunchedEffect(Unit) {
         delay(16)
@@ -183,8 +189,29 @@ fun WeatherCitySelector(
         }
     }
 
-    // 返回键处理
-    BackHandler(onBack = exit)
+    // 预测返回手势（参照 AirQualityDetailPopup）
+    PredictiveBackHandler(enabled = true) { progress ->
+        try {
+            progress.collect { backEvent ->
+                val p = backEvent.progress
+                // 手势进度：swiper 向左滑出 + 背景淡出
+                swiperTranslateX.snapTo(-(screenWidthPx + itemWidthPx) * p)
+                blurAlpha.snapTo(1f - p)
+            }
+            // 手势完成 → 快速收尾动画 + 关闭
+            kotlinx.coroutines.coroutineScope {
+                launch { swiperTranslateX.animateTo(-(screenWidthPx + itemWidthPx), tween(150)) }
+                launch { blurAlpha.animateTo(0f, tween(150)) }
+            }
+            onDismiss()
+        } catch (_: kotlin.coroutines.cancellation.CancellationException) {
+            // 手势取消 → 弹回原位
+            kotlinx.coroutines.coroutineScope {
+                launch { swiperTranslateX.animateTo(0f, spring(stiffness = Spring.StiffnessMediumLow)) }
+                launch { blurAlpha.animateTo(1f, spring(stiffness = Spring.StiffnessMediumLow)) }
+            }
+        }
+    }
 
     // 切换城市（参照 Flutter _switchWeatherCity）
     val switchCity: (Int, Long) -> Unit = { index, delayMs ->

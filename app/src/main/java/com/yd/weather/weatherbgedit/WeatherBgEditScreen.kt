@@ -103,15 +103,19 @@ internal fun WeatherBgEditRoute(
         onConfirm = { viewModel.confirm() }
     )
 
-    // 颜色输入对话框（参照 Flutter ColorInputDialog）
+    // 颜色输入对话框（用 Popup 拦截返回键，避免直接退出编辑页）
     if (showColorInputDialog) {
-        ColorInputDialog(
-            onDismiss = { showColorInputDialog = false },
-            onColorInput = { hex ->
-                viewModel.updateColorFromHex(hex)
-                showColorInputDialog = false
-            }
-        )
+        androidx.compose.ui.window.Popup(
+            onDismissRequest = { showColorInputDialog = false }
+        ) {
+            ColorInputDialog(
+                onDismiss = { showColorInputDialog = false },
+                onColorInput = { hex ->
+                    viewModel.updateColorFromHex(hex)
+                    showColorInputDialog = false
+                }
+            )
+        }
     }
 }
 

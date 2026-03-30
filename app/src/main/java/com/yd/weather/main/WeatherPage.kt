@@ -75,6 +75,7 @@ fun WeatherPage(
     val refreshStateRef = remember { mutableStateOf<RefreshState?>(null) }
     var topBarOpacity by remember { mutableFloatStateOf(1f) }
     var showCitySelector by remember { mutableStateOf(false) }
+    var citySelectorBlur by remember { mutableFloatStateOf(0f) }
     val animatable = remember { Animatable(if (isShowWeatherPage) 0f else 1f) }
     val predictiveBackProgress by mainViewModel.predictiveBackProgress.collectAsStateWithLifecycle()
 
@@ -124,7 +125,7 @@ fun WeatherPage(
                 }
                 .alpha(1 - ((animValue - 0.95f) / 0.05f).coerceIn(0f, 1f))
                 .clip(WeatherContentClip(animValue, mainViewModel.offsetY))
-                .then(if (showCitySelector) Modifier.blur(30.dp) else Modifier)
+                .then(if (citySelectorBlur > 0f) Modifier.blur(citySelectorBlur.dp) else Modifier)
                 .background(
                     brush = Brush.verticalGradient(colors = listOf(startColor, endColor))
                 )
@@ -194,6 +195,7 @@ fun WeatherPage(
             addedCities = addedCities,
             currentCityData = currentCityData,
             appState = mainViewModel.appState(),
+            onBlurChange = { citySelectorBlur = it },
             onSwitchCity = { cityData, isSameCity ->
                 // 参照 Flutter _switchWeatherCityEventSubscription
                 // 延迟 200ms 后 scrollToTop
@@ -206,7 +208,10 @@ fun WeatherPage(
                     mainViewModel.appState().setCurrentCityData(cityData)
                 }
             },
-            onDismiss = { showCitySelector = false },
+            onDismiss = {
+                showCitySelector = false
+                citySelectorBlur = 0f
+            },
             onNavigateToWeatherBgList = {
                 mainViewModel.navigate(com.yd.weather.routes.WeatherBgRoutes.WeatherBgList)
             }
