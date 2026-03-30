@@ -95,6 +95,24 @@ class MainViewModel @Inject constructor(
                 reorderWeatherItems()
             }
         }
+        // 监听天气背景自定义变化，重新生成背景
+        viewModelScope.launch {
+            appState.weatherBgMap.drop(1).collect {
+                refreshWeatherBg()
+            }
+        }
+    }
+
+    private fun refreshWeatherBg() {
+        val currentCity = appState.currentCityData.value ?: return
+        val key = if (currentCity.isLocationCity) Constants.LOCATION_CITY_ID else currentCity.cityId ?: ""
+        val weatherData = appState.getWeatherData(key)
+        generateWeatherBg(
+            weatherData,
+            currentCity.weatherData?.weatherType,
+            currentCity.weatherData?.sunrise,
+            currentCity.weatherData?.sunset
+        )
     }
 
     fun obtainWeatherData() {
