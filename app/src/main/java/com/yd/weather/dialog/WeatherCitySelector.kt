@@ -48,11 +48,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import com.kyant.backdrop.Backdrop
-import com.kyant.backdrop.drawBackdrop
-import com.kyant.backdrop.effects.blur
 import com.yd.weather.R
 import com.yd.weather.app.AppState
 import com.yd.weather.component.AppText
@@ -67,16 +63,15 @@ import kotlinx.coroutines.launch
 import kotlin.math.abs
 
 /**
- * 天气城市选择器（使用 Backdrop 实时模糊）
+ * 天气城市选择器
  */
 @SuppressLint("ConfigurationScreenWidthHeight", "FrequentlyChangingValue")
 @Composable
 fun WeatherCitySelector(
-    backdrop: Backdrop,
     addedCities: List<CityData>,
     currentCityData: CityData?,
     appState: AppState,
-    onSwitchCity: (CityData) -> Unit,
+    onSwitchCity: (cityData: CityData, isSameCity: Boolean) -> Unit,
     onDismiss: () -> Unit,
     onNavigateToWeatherBgList: () -> Unit = {}
 ) {
@@ -192,18 +187,21 @@ fun WeatherCitySelector(
     BackHandler(onBack = exit)
 
     // 切换城市（参照 Flutter _switchWeatherCity）
-    val switchCity: (Int) -> Unit = { index ->
+    val switchCity: (Int, Long) -> Unit = { index, delayMs ->
         scope.launch {
-            // 1. 显示快照（scale 0.6）
+            // 1. 延迟（非居中 item 点击时等滚动完成）
+            if (delayMs > 0) delay(delayMs)
+            // 2. 显示快照（scale 0.6）
             selectedIndex = index
-            // 2. 等 200ms 让快照渲染
+            // 3. 等 200ms 让快照渲染
             delay(200)
-            // 3. 切换城市数据
-            onSwitchCity(snapshots[index].cityData)
-            // 4. 同时：Swiper 淡出 + 快照放大到全屏
+            // 4. 判断是否同一城市，回调切换（参照 Flutter eventBus.fire SwitchWeatherCityEvent）
+            val isSame = snapshots[index].cityData.cityId == currentCityData?.cityId
+            onSwitchCity(snapshots[index].cityData, isSame)
+            // 5. Swiper 淡出 + 快照放大到全屏
             swiperOpacity = 0f
             scaleAnim.animateTo(1f, tween(400, easing = FastOutSlowInEasing))
-            // 5. 放大完成后关闭
+            // 6. 放大完成后关闭
             onDismiss()
         }
     }
@@ -216,21 +214,12 @@ fun WeatherCitySelector(
             onClick = exit
         )
     ) {
-        // Backdrop 实时模糊背景
+        // 半透明遮罩
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .alpha(blurAlpha.value)
-                .drawBackdrop(
-                    backdrop = backdrop,
-                    shape = { RectangleShape },
-                    effects = {
-                        blur(with(density) { 30.dp.toPx() })
-                    },
-                    onDrawSurface = {
-                        drawRect(Color.Black.copy(alpha = 0.15f))
-                    }
-                )
+                .background(Color.Black.copy(alpha = 0.15f))
                 .clickable(
                     indication = null,
                     interactionSource = remember { MutableInteractionSource() },
@@ -271,7 +260,7 @@ fun WeatherCitySelector(
         // LazyRow + snap 卡片
         val animatedSwiperOpacity by animateFloatAsState(
             targetValue = swiperOpacity,
-            animationSpec = tween(200),
+            animationSpec = tween(400, easing = FastOutSlowInEasing),
             label = "swiperOpacity"
         )
         val horizontalPadding = ((screenWidthDp - itemWidthDp) / 2f).dp
@@ -322,11 +311,14 @@ fun WeatherCitySelector(
                             interactionSource = remember { MutableInteractionSource() },
                             onClick = {
                                 if (currentIndex == index) {
-                                    switchCity(index)
+                                    // 居中 item 点击 → 立即切换
+                                    switchCity(index, 0L)
                                 } else {
+                                    // 非居中 item 点击 → 滚动过去 + 延迟后切换
                                     scope.launch {
                                         lazyListState.animateScrollToItem(index)
                                     }
+                                    switchCity(index, 200L)
                                 }
                             }
                         )

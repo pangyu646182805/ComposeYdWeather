@@ -22,6 +22,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -34,8 +35,7 @@ import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.kyant.backdrop.backdrops.layerBackdrop
-import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import androidx.compose.ui.draw.blur
 import com.yd.weather.R
 import com.yd.weather.app.ViewState
 import com.yd.weather.component.CenterTopAppBar
@@ -50,6 +50,8 @@ import com.yd.weather.utils.WeatherContentClip
 import com.yd.weather.viewmodel.CityManagerViewModel
 import com.yd.weather.viewmodel.MainViewModel
 import com.yd.weather.widget.WeatherContentList
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @Composable
 fun WeatherPage(
@@ -67,6 +69,7 @@ fun WeatherPage(
     mainViewModel: MainViewModel = hiltViewModel(),
     cityManagerViewModel: CityManagerViewModel = hiltViewModel()
 ) {
+    val scope = rememberCoroutineScope()
     val weatherScrollState = rememberLazyListState()
     // 保存 refreshState 引用，用于数据加载完成后调用 refreshComplete()
     val refreshStateRef = remember { mutableStateOf<RefreshState?>(null) }
@@ -98,9 +101,6 @@ fun WeatherPage(
     }
 
     val animValue = animatable.value
-    val backdrop = rememberLayerBackdrop {
-        drawContent()
-    }
     if (animValue < 1) {
         val startColor by animateColorAsState(
             targetValue = weatherBg[0],
@@ -124,7 +124,7 @@ fun WeatherPage(
                 }
                 .alpha(1 - ((animValue - 0.95f) / 0.05f).coerceIn(0f, 1f))
                 .clip(WeatherContentClip(animValue, mainViewModel.offsetY))
-                .layerBackdrop(backdrop)
+                .then(if (showCitySelector) Modifier.blur(30.dp) else Modifier)
                 .background(
                     brush = Brush.verticalGradient(colors = listOf(startColor, endColor))
                 )
@@ -191,12 +191,20 @@ fun WeatherPage(
     // 城市选择器 — 在 clipped Box 外部，不受裁剪影响
     if (showCitySelector && !addedCities.isNullOrEmpty()) {
         WeatherCitySelector(
-            backdrop = backdrop,
             addedCities = addedCities,
             currentCityData = currentCityData,
             appState = mainViewModel.appState(),
-            onSwitchCity = { cityData ->
-                mainViewModel.appState().setCurrentCityData(cityData)
+            onSwitchCity = { cityData, isSameCity ->
+                // 参照 Flutter _switchWeatherCityEventSubscription
+                // 延迟 200ms 后 scrollToTop
+                scope.launch {
+                    delay(200)
+                    weatherScrollState.animateScrollToItem(0)
+                }
+                // 不同城市才切换数据（会自动触发 obtainWeatherData）
+                if (!isSameCity) {
+                    mainViewModel.appState().setCurrentCityData(cityData)
+                }
             },
             onDismiss = { showCitySelector = false },
             onNavigateToWeatherBgList = {

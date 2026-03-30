@@ -1,9 +1,13 @@
 package com.yd.weather.weatherbglist
 
 import com.yd.weather.app.AppState
+import com.yd.weather.utils.toSafeColor
 import com.yd.weather.model.WeatherBgModel
 import com.yd.weather.navigation.AppNavigator
+import com.yd.weather.routes.WeatherBgRoutes
 import com.yd.weather.viewmodel.BaseViewModel
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -50,6 +54,8 @@ class WeatherBgListViewModel @Inject constructor(
     }
 
     fun removeWeatherBg(weatherType: String, model: WeatherBgModel) {
+        // 参照 Flutter: 先隐藏菜单，再删除
+        _isShowMenu.value = false
         _appState.removeWeatherBg(weatherType, model)
         loadWeatherBgMap()
     }
@@ -58,5 +64,27 @@ class WeatherBgListViewModel @Inject constructor(
         _appState.removeAllWeatherBg()
         _isShowMenu.value = false
         loadWeatherBgMap()
+    }
+
+    fun navigateToWeatherBgEdit(
+        weatherType: String,
+        model: WeatherBgModel?,
+        isEdit: Boolean = false,
+        isPreviewMode: Boolean = false
+    ) {
+        _isShowMenu.value = false
+        navigate(
+            WeatherBgRoutes.WeatherBgEdit(
+                weatherType = weatherType,
+                colorsJson = model?.colors?.let { list ->
+                    Json.encodeToString(list.map { (it shr 32).toInt() })
+                } ?: "",
+                nightColorsJson = model?.nightColors?.let { list ->
+                    Json.encodeToString(list.map { (it shr 32).toInt() })
+                } ?: "",
+                isEdit = isEdit,
+                isPreviewMode = isPreviewMode
+            )
+        )
     }
 }

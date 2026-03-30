@@ -11,6 +11,7 @@ import com.yd.weather.main.mainGraph
 import com.yd.weather.routes.LaunchRoutes
 import com.yd.weather.selectcity.selectCityGraph
 import com.yd.weather.cardsort.cardSortScreen
+import com.yd.weather.weatherbgedit.weatherBgEditScreen
 import com.yd.weather.weatherbglist.weatherBgListScreen
 import com.yd.weather.weatherpreview.weatherPreviewGraph
 import kotlinx.coroutines.flow.collectLatest
@@ -48,6 +49,7 @@ fun AppNavHost(
             weatherPreviewGraph(navController)
             cardSortScreen(navController)
             weatherBgListScreen(navController)
+            weatherBgEditScreen(navController)
             launchGraph(navController, this@SharedTransitionLayout)
         }
     }

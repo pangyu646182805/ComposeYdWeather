@@ -13,6 +13,7 @@ import com.yd.weather.model.WeatherHourData
 import com.yd.weather.model.WeatherItemData
 import com.yd.weather.utils.Commons
 import com.yd.weather.utils.MMKVUtils
+import com.yd.weather.utils.toSafeColor
 import com.yd.weather.utils.WeatherBgUtils
 import com.yd.weather.utils.getToday
 import com.yd.weather.utils.isLight
@@ -183,6 +184,28 @@ class AppState @Inject constructor(
         MMKVUtils.putObject(Constants.CURRENT_WEATHER_BG_MAP, map)
     }
 
+    fun addWeatherBg(
+        weatherType: String,
+        model: WeatherBgModel,
+        editModel: WeatherBgModel? = null
+    ) {
+        val map = getWeatherBgMap().toMutableMap()
+        val list = map[weatherType]?.toMutableList() ?: return
+        if (editModel != null) {
+            // 编辑模式：替换旧的
+            val index = list.indexOfFirst { it == editModel }
+            if (index >= 0) {
+                list[index] = model.copy(isSelected = editModel.isSelected)
+            }
+        } else {
+            // 新增模式
+            list.add(model)
+        }
+        map[weatherType] = list
+        _weatherBgMap.value = map
+        MMKVUtils.putObject(Constants.CURRENT_WEATHER_BG_MAP, map)
+    }
+
     fun removeWeatherBg(weatherType: String, model: WeatherBgModel) {
         val map = getWeatherBgMap().toMutableMap()
         val list = map[weatherType]?.toMutableList() ?: return
@@ -232,8 +255,8 @@ class AppState @Inject constructor(
             val weatherBgMap = getWeatherBgMap()
             val find = weatherBgMap[WeatherBgUtils.fixedWeatherType(type)]?.find { it.isSelected }
             if (find != null) {
-                return if (isDark) find.nightColors.map { Color(it) } else find.colors.map {
-                    Color(it)
+                return if (isDark) find.nightColors.map { it.toSafeColor() } else find.colors.map {
+                    it.toSafeColor()
                 }
             }
         }
