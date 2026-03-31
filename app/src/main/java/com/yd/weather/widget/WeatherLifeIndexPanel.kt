@@ -1,6 +1,7 @@
 package com.yd.weather.widget
 
 import android.annotation.SuppressLint
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -21,6 +22,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
@@ -69,6 +71,14 @@ fun WeatherLifeIndexPanel(
     var gridContentXPx by remember { mutableFloatStateOf(0f) }
     var gridContentYPx by remember { mutableFloatStateOf(0f) }
     val cellSizePx = with(density) { columnHeight.dp.toPx() }
+    val stickyHeaderPx = with(density) { Constants.ITEM_STICKY_HEIGHT.dp.toPx() }
+
+    // 根据 grid 局部坐标计算 item index
+    fun calcIndexFromLocal(localX: Float, localY: Float): Int {
+        val col = (localX / cellSizePx).toInt().coerceIn(0, 2)
+        val row = ((localY - stickyHeaderPx) / cellSizePx).toInt().coerceIn(0, rowCount - 1)
+        return (row * 3 + col).coerceIn(0, indexes.size - 1)
+    }
 
     WeatherStickyPanel(
         index = index,
@@ -87,7 +97,26 @@ fun WeatherLifeIndexPanel(
                 .onGloballyPositioned { coordinates ->
                     val pos = coordinates.positionInWindow()
                     gridContentXPx = pos.x
-                    gridContentYPx = pos.y + with(density) { Constants.ITEM_STICKY_HEIGHT.dp.toPx() }
+                    gridContentYPx = pos.y + stickyHeaderPx
+                }
+                .pointerInput(Unit) {
+                    detectDragGesturesAfterLongPress(
+                        onDragStart = { offset ->
+                            hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                            popupIndex = calcIndexFromLocal(offset.x, offset.y)
+                            showPopup = true
+                        },
+                        onDrag = { change, _ ->
+                            change.consume()
+                            val newIndex = calcIndexFromLocal(change.position.x, change.position.y)
+                            if (newIndex != popupIndex && newIndex in indexes.indices) {
+                                hapticFeedback.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                popupIndex = newIndex
+                            }
+                        },
+                        onDragEnd = {},
+                        onDragCancel = {}
+                    )
                 },
             contentPadding = PaddingValues(top = Constants.ITEM_STICKY_HEIGHT.dp),
             columns = GridCells.Fixed(3),
@@ -104,11 +133,6 @@ fun WeatherLifeIndexPanel(
                         modifier = Modifier
                             .bounceClick(
                                 onClick = {
-                                    popupIndex = i
-                                    showPopup = true
-                                },
-                                onLongClick = {
-                                    hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
                                     popupIndex = i
                                     showPopup = true
                                 }

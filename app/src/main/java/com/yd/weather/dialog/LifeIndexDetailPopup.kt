@@ -2,14 +2,17 @@ package com.yd.weather.dialog
 
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
-import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -57,6 +60,7 @@ import com.yd.weather.config.Constants
 import com.yd.weather.model.WeatherIndexData
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * 生活指数详情气泡弹窗（参照 Flutter LifeIndexDialog）
@@ -82,8 +86,12 @@ fun LifeIndexDetailPopup(
     val scope = rememberCoroutineScope()
     val rowCount = kotlin.math.ceil(indexes.size / 3.0).toInt()
 
-    // 当前展示的 index
+    // 当前展示的 index（内部管理 + 响应外部 initialIndex 变化）
     var currentIndex by remember { mutableIntStateOf(initialIndex) }
+    // 只在外部 initialIndex 真正变化时同步（避免和内部拖拽互相打架）
+    LaunchedEffect(initialIndex) {
+        currentIndex = initialIndex
+    }
     val currentData = indexes.getOrNull(currentIndex) ?: return
 
     // 整体淡入淡出
@@ -146,9 +154,13 @@ fun LifeIndexDetailPopup(
         1 -> 0f   // Center
         else -> 1f // End
     }
+    val positionSpring = spring<Float>(
+        dampingRatio = Spring.DampingRatioLowBouncy,
+        stiffness = Spring.StiffnessMedium
+    )
     val animatedAlignmentBias by animateFloatAsState(
         targetValue = targetAlignmentBias,
-        animationSpec = tween(200),
+        animationSpec = positionSpring,
         label = "alignmentBias"
     )
 
@@ -157,7 +169,7 @@ fun LifeIndexDetailPopup(
     val targetArrowXPx = targetItemCenterXPx - panelMarginPx
     val animatedArrowXPx by animateFloatAsState(
         targetValue = targetArrowXPx,
-        animationSpec = tween(200),
+        animationSpec = positionSpring,
         label = "arrowX"
     )
 
@@ -165,7 +177,10 @@ fun LifeIndexDetailPopup(
     val targetCardTopDp = targetItemTopDp - with(density) { cardHeightPx.toDp() } - 28.dp
     val animatedCardTopDp by animateDpAsState(
         targetValue = targetCardTopDp.coerceAtLeast(0.dp),
-        animationSpec = tween(200),
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioLowBouncy,
+            stiffness = Spring.StiffnessMedium
+        ),
         label = "cardTop"
     )
     val arrowColor = colorResource(R.color.color_white)
@@ -180,36 +195,43 @@ fun LifeIndexDetailPopup(
                 .fillMaxSize()
                 .alpha(opacity.value)
         ) {
-            // 透明遮罩：点击关闭 + 长按拖拽切换
+            // 透明遮罩：点击关闭 + 长按拖拽切换（合并到一个 pointerInput 避免冲突）
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .pointerInput(Unit) {
-                        detectTapGestures { exit() }
-                    }
-                    .pointerInput(Unit) {
-                        detectDragGesturesAfterLongPress(
-                            onDragStart = { offset ->
-                                val newIndex = calcIndexFromScreenPosition(offset.x, offset.y)
-                                if (newIndex != currentIndex && newIndex in indexes.indices) {
-                                    hapticFeedback.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                    currentIndex = newIndex
-                                }
-                            },
-                            onDrag = { change, _ ->
-                                change.consume()
-                                val newIndex = calcIndexFromScreenPosition(
-                                    change.position.x,
-                                    change.position.y
+                        awaitEachGesture {
+                            val down = awaitFirstDown()
+                            val longPress = withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis) {
+                                waitForUpOrCancellation()
+                            }
+                            if (longPress != null) {
+                                // 短按（手指已抬起）→ 关闭
+                                exit()
+                            } else {
+                                // 长按触发 → 开始拖拽切换
+                                hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                                val startIndex = calcIndexFromScreenPosition(
+                                    down.position.x, down.position.y
                                 )
-                                if (newIndex != currentIndex && newIndex in indexes.indices) {
-                                    hapticFeedback.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                    currentIndex = newIndex
+                                if (startIndex != currentIndex && startIndex in indexes.indices) {
+                                    currentIndex = startIndex
                                 }
-                            },
-                            onDragEnd = {},
-                            onDragCancel = {}
-                        )
+                                // 追踪拖拽
+                                do {
+                                    val event = awaitPointerEvent()
+                                    val change = event.changes.firstOrNull() ?: break
+                                    change.consume()
+                                    val newIndex = calcIndexFromScreenPosition(
+                                        change.position.x, change.position.y
+                                    )
+                                    if (newIndex != currentIndex && newIndex in indexes.indices) {
+                                        hapticFeedback.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        currentIndex = newIndex
+                                    }
+                                } while (event.changes.any { it.pressed })
+                            }
+                        }
                     }
             )
 
@@ -236,7 +258,12 @@ fun LifeIndexDetailPopup(
                             colorResource(R.color.color_white),
                             RoundedCornerShape(12.dp)
                         )
-                        .animateContentSize(animationSpec = tween(200))
+                        .animateContentSize(
+                            animationSpec = spring(
+                                dampingRatio = Spring.DampingRatioLowBouncy,
+                                stiffness = Spring.StiffnessMedium
+                            )
+                        )
                         .padding(8.dp)
                         .alpha(animatedContentOpacity),
                     fillMaxWidth = false
