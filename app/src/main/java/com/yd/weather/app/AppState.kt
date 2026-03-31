@@ -192,10 +192,12 @@ class AppState @Inject constructor(
         val map = getWeatherBgMap().toMutableMap()
         val list = map[weatherType]?.toMutableList() ?: return
         if (editModel != null) {
-            // 编辑模式：替换旧的
-            val index = list.indexOfFirst { it == editModel }
+            // 编辑模式：替换旧的（用 colors/nightColors 匹配，忽略 isSelected 和精度差异）
+            val index = list.indexOfFirst {
+                it.colors == editModel.colors && it.nightColors == editModel.nightColors
+            }
             if (index >= 0) {
-                list[index] = model.copy(isSelected = editModel.isSelected)
+                list[index] = model.copy(isSelected = list[index].isSelected)
             }
         } else {
             // 新增模式

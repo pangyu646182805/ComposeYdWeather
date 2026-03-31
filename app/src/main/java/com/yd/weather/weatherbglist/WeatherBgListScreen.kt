@@ -42,6 +42,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -180,11 +181,16 @@ private fun WeatherBgListScreen(
             }
         )
 
-        LazyColumn(
-            state = lazyListState,
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)
+                .clipToBounds()
+        ) {
+        LazyColumn(
+            state = lazyListState,
+            modifier = Modifier
+                .fillMaxSize()
                 .nestedScroll(elastic.connection)
                 .graphicsLayer { translationY = elastic.overscrollOffset }
                 .navigationBarsPadding(),
@@ -264,6 +270,7 @@ private fun WeatherBgListScreen(
                     }
                 }
             }
+        }
         }
     }
 }
