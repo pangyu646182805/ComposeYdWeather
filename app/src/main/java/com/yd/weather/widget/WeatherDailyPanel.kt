@@ -45,8 +45,12 @@ import com.yd.weather.component.HorizontalSpace
 import com.yd.weather.component.VerticalSpace
 import com.yd.weather.component.WrapColumn
 import com.yd.weather.component.WrapRow
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.runtime.mutableIntStateOf
 import com.yd.weather.component.alphaClick
 import com.yd.weather.config.Constants
+import com.yd.weather.dialog.WeatherDailyPopup
 import com.yd.weather.model.WeatherData
 import com.yd.weather.model.WeatherDetailData
 import com.yd.weather.model.WeatherItemData
@@ -70,8 +74,27 @@ fun WeatherDailyPanel(
     panelOpacity: Float = 0.1f,
     firstItemOffset: Float = 0f,
     firstVisibleItemIndex: Int = 0,
-    enable: Boolean = true
+    enable: Boolean = true,
+    weatherBg: List<Color> = emptyList(),
+    showHideWeatherContent: ((Boolean) -> Unit)? = null
 ) {
+    var showDailyPopup by remember { mutableStateOf(false) }
+    var popupInitialIndex by remember { mutableIntStateOf(0) }
+
+    if (enable && showDailyPopup) {
+        WeatherDailyPopup(
+            initialIndex = popupInitialIndex,
+            forecast15 = item.weatherData?.forecast15,
+            weatherBg = weatherBg,
+            isDark = isDark,
+            panelOpacity = panelOpacity,
+            onDismiss = {
+                showDailyPopup = false
+                showHideWeatherContent?.invoke(true)
+            }
+        )
+    }
+
     var currentDailyWeatherType by remember {
         mutableStateOf(
             MMKVUtils.getString(Constants.CURRENT_DAILY_WEATHER_TYPE, Constants.LIST_DAILY_WEATHER)
@@ -141,7 +164,13 @@ fun WeatherDailyPanel(
             LineChartDailyWeather(
                 forecast15 = weatherData?.forecast15,
                 weatherData = weatherData,
-                visible = currentDailyWeatherType == Constants.LINE_CHART_DAILY_WEATHER
+                visible = currentDailyWeatherType == Constants.LINE_CHART_DAILY_WEATHER,
+                onItemClick = { clickIndex ->
+                    if (!enable) return@LineChartDailyWeather
+                    popupInitialIndex = clickIndex
+                    showHideWeatherContent?.invoke(false)
+                    showDailyPopup = true
+                }
             )
             // 列表
             ListDailyWeather(
@@ -151,6 +180,12 @@ fun WeatherDailyPanel(
                 isExpand = isExpand,
                 lookMore = {
                     isExpand = !isExpand
+                },
+                onItemClick = { clickIndex ->
+                    if (!enable) return@ListDailyWeather
+                    popupInitialIndex = clickIndex
+                    showHideWeatherContent?.invoke(false)
+                    showDailyPopup = true
                 }
             )
         }
@@ -200,7 +235,8 @@ internal fun RightStickContent(
 internal fun LineChartDailyWeather(
     forecast15: List<WeatherDetailData>? = null,
     weatherData: WeatherData? = null,
-    visible: Boolean = true
+    visible: Boolean = true,
+    onItemClick: (Int) -> Unit = {}
 ) {
     if (forecast15.isNullOrEmpty()) return
     AnimatedVisibility(visible = visible, enter = fadeIn(), exit = fadeOut()) {
@@ -211,7 +247,10 @@ internal fun LineChartDailyWeather(
                 .graphicsLayer { translationX = elastic.overscrollOffset }
         ) {
             itemsIndexed(forecast15) { index, item ->
-                LineChartDailyWeatherItem(item, index, weatherData)
+                LineChartDailyWeatherItem(
+                    item, index, weatherData,
+                    onClick = { onItemClick(index) }
+                )
             }
         }
     }
@@ -223,7 +262,8 @@ internal fun ListDailyWeather(
     weatherData: WeatherData? = null,
     visible: Boolean = true,
     isExpand: Boolean = true,
-    lookMore: () -> Unit
+    lookMore: () -> Unit,
+    onItemClick: (Int) -> Unit = {}
 ) {
     if (forecast15.isNullOrEmpty()) return
     val rotation by animateFloatAsState(
@@ -239,8 +279,11 @@ internal fun ListDailyWeather(
                     .weight(1f),
                 userScrollEnabled = false
             ) {
-                items(forecast15) { item ->
-                    ListDailyWeatherItem(item, weatherData)
+                itemsIndexed(forecast15) { index, item ->
+                    ListDailyWeatherItem(
+                        item, weatherData,
+                        onClick = { onItemClick(index) }
+                    )
                 }
             }
             WrapRow(
@@ -273,12 +316,16 @@ internal fun ListDailyWeather(
 internal fun LineChartDailyWeatherItem(
     item: WeatherDetailData,
     index: Int = 0,
-    weatherData: WeatherData?
+    weatherData: WeatherData?,
+    onClick: () -> Unit = {}
 ) {
     val isBefore = Commons.isBefore(item.date)
     val maxTempData = weatherData?.forecast15?.maxByOrNull { it.high }
     val minTempData = weatherData?.forecast15?.minByOrNull { it.low }
-    WrapColumn(horizontalAlignment = Alignment.CenterHorizontally) {
+    WrapColumn(
+        modifier = Modifier.alphaClick(onClick = onClick),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
         VerticalSpace(height = 12.dp)
         AppText(
             text = Commons.getWeatherDateTime(item.date),
@@ -361,7 +408,8 @@ internal fun LineChartDailyWeatherItem(
 @Composable
 internal fun ListDailyWeatherItem(
     item: WeatherDetailData,
-    weatherData: WeatherData?
+    weatherData: WeatherData?,
+    onClick: () -> Unit = {}
 ) {
     val isBefore = Commons.isBefore(item.date)
     val maxTempData = weatherData?.forecast15?.maxByOrNull { it.high }
@@ -371,6 +419,7 @@ internal fun ListDailyWeatherItem(
             .fillMaxWidth()
             .height(Constants.DAILY_WEATHER_ITEM_HEIGHT.dp)
             .padding(horizontal = 16.dp)
+            .alphaClick(onClick = onClick)
     ) {
         AppRow(
             modifier = Modifier

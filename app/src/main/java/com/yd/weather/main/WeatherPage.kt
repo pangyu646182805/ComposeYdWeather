@@ -156,6 +156,7 @@ fun WeatherPage(
                     isDark = isDark,
                     panelOpacity = panelOpacity,
                     isWeatherHeaderDark = isWeatherHeaderDark,
+                    weatherBg = weatherBg,
                     currentCityData = currentCityData,
                     weatherItems = weatherItems,
                     itemTypeObserves = itemTypeObserves,

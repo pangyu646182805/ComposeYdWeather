@@ -5,7 +5,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -17,6 +19,7 @@ import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.yd.weather.R
@@ -110,12 +113,20 @@ fun WeatherHeaderWidget(
             }
         }
         AppText(
+            modifier = Modifier.padding(horizontal = 42.dp),
             text = title(
                 currentCityData = currentCityData,
                 previewCity = previewCity,
                 weatherItemData = weatherItemData
             ),
             fontSize = 28.sp,
+            autoSize = TextAutoSize.StepBased(
+                maxFontSize = 28.sp,
+                minFontSize = 22.sp,
+                stepSize = 1.sp
+            ),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
             color = colorResource(if (isWeatherHeaderDark) R.color.color_white else R.color.color_black),
             fontWeight = FontWeight.ExtraLight,
             shadow = textShadow

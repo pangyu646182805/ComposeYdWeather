@@ -34,6 +34,7 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -60,6 +61,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -620,12 +622,23 @@ fun CityItem(
             .padding(horizontal = if (isEditMode && !isLocationCity) 52.dp else 16.dp),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        StartAlignColumn(fillMaxWidth = false) {
+        StartAlignColumn(
+            modifier = Modifier
+                .weight(1f)
+                .padding(end = 12.dp), fillMaxWidth = false
+        ) {
             WrapRow {
                 AppText(
                     text = title(),
                     fontWeight = FontWeight.Thin,
                     fontSize = 20.sp,
+                    autoSize = TextAutoSize.StepBased(
+                        maxFontSize = 20.sp,
+                        minFontSize = 16.sp,
+                        stepSize = 1.sp
+                    ),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                     color = colorResource(if (isDark) R.color.color_white else R.color.color_black)
                 )
                 if (isLocationCity) {
@@ -648,6 +661,7 @@ fun CityItem(
             text = Commons.getTemp(item?.weatherData?.temp),
             fontWeight = FontWeight.Thin,
             fontSize = 38.sp,
+            maxLines = 1,
             color = colorResource(if (isDark) R.color.color_white else R.color.color_black)
         )
     }

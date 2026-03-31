@@ -27,6 +27,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import com.yd.weather.component.VerticalSpace
+import androidx.compose.ui.graphics.Color
 import com.yd.weather.config.Constants
 import com.yd.weather.db.model.CityData
 import com.yd.weather.model.WeatherItemData
@@ -46,6 +47,7 @@ fun WeatherContentList(
     itemTypeObserves: Array<Int>? = null,
     showSortCardButton: Boolean = true,
     onCardSortButtonClick: () -> Unit = {},
+    weatherBg: List<Color> = emptyList(),
     previewCity: Boolean = false,
     onRefresh: (() -> Unit)? = null,
     onRefreshState: ((RefreshState) -> Unit)? = null,
@@ -190,7 +192,9 @@ fun WeatherContentList(
                                 isDark = isDark,
                                 panelOpacity = panelOpacity,
                                 firstItemOffset = firstItemOffset,
-                                firstVisibleItemIndex = firstVisibleItemIndex
+                                firstVisibleItemIndex = firstVisibleItemIndex,
+                                weatherBg = weatherBg,
+                                showHideWeatherContent = showHideWeatherContent
                             )
 
                             Constants.ITEM_TYPE_OBSERVE -> WeatherObservePanel(

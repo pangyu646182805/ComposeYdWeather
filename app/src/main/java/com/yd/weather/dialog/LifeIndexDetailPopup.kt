@@ -1,6 +1,8 @@
 package com.yd.weather.dialog
 
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
@@ -108,21 +110,16 @@ fun LifeIndexDetailPopup(
         opacity.animateTo(1f, tween(200))
     }
 
-    // currentIndex 变化时：淡出 → 切换数据 → 淡入
+    // currentIndex 变化时：位置立即更新（动画过渡），内容淡出 → 切换 → 淡入
     LaunchedEffect(currentIndex) {
-        if (currentIndex / 3 != displayRow || currentIndex % 3 != displayColumn) {
-            contentOpacity = 0f
-            delay(50)
-            displayData = indexes.getOrNull(currentIndex) ?: return@LaunchedEffect
-            displayColumn = currentIndex % 3
-            displayRow = currentIndex / 3
-            contentOpacity = 1f
-        } else if (indexes.getOrNull(currentIndex) != displayData) {
-            contentOpacity = 0f
-            delay(50)
-            displayData = indexes.getOrNull(currentIndex) ?: return@LaunchedEffect
-            contentOpacity = 1f
-        }
+        // 位置立即更新，让 animateXxxAsState 驱动动画
+        displayColumn = currentIndex % 3
+        displayRow = currentIndex / 3
+        // 内容淡出 → 切换 → 淡入
+        contentOpacity = 0f
+        delay(50)
+        displayData = indexes.getOrNull(currentIndex) ?: return@LaunchedEffect
+        contentOpacity = 1f
     }
 
     // 根据屏幕触摸坐标计算 grid item index
@@ -139,23 +136,38 @@ fun LifeIndexDetailPopup(
         }
     }
 
-    // item 在屏幕上的位置（dp）
-    val itemTopDp = with(density) { (gridContentYPx + displayRow * cellSizePx).toDp() }
-    val itemCenterXPx = gridContentXPx + displayColumn * cellSizePx + cellSizePx / 2
+    // item 在屏幕上的位置（dp）- 使用动画过渡
+    val targetItemTopDp = with(density) { (gridContentYPx + displayRow * cellSizePx).toDp() }
+    val targetItemCenterXPx = gridContentXPx + displayColumn * cellSizePx + cellSizePx / 2
 
     // 弹窗对齐（参照 Flutter AnimatedAlign）
-    val alignment = when (displayColumn) {
-        0 -> Alignment.TopStart
-        1 -> Alignment.TopCenter
-        else -> Alignment.TopEnd
+    val targetAlignmentBias = when (displayColumn) {
+        0 -> -1f  // Start
+        1 -> 0f   // Center
+        else -> 1f // End
     }
+    val animatedAlignmentBias by animateFloatAsState(
+        targetValue = targetAlignmentBias,
+        animationSpec = tween(200),
+        label = "alignmentBias"
+    )
 
-    // 箭头 X 在 padding 内的位置（px）
+    // 箭头 X 在 padding 内的位置（px）- 动画过渡
     val panelMarginPx = with(density) { Constants.ITEM_PANEL_MARGIN.dp.toPx() }
-    val arrowXPx = itemCenterXPx - panelMarginPx
+    val targetArrowXPx = targetItemCenterXPx - panelMarginPx
+    val animatedArrowXPx by animateFloatAsState(
+        targetValue = targetArrowXPx,
+        animationSpec = tween(200),
+        label = "arrowX"
+    )
 
-    // 卡片顶部 Y（在 item 上方，留 12dp 间距 + 8dp 箭头高度）
-    val cardTopDp = itemTopDp - with(density) { cardHeightPx.toDp() } - 28.dp
+    // 卡片顶部 Y（在 item 上方，留 12dp 间距 + 8dp 箭头高度）- 动画过渡
+    val targetCardTopDp = targetItemTopDp - with(density) { cardHeightPx.toDp() } - 28.dp
+    val animatedCardTopDp by animateDpAsState(
+        targetValue = targetCardTopDp.coerceAtLeast(0.dp),
+        animationSpec = tween(200),
+        label = "cardTop"
+    )
     val arrowColor = colorResource(R.color.color_white)
 
     Popup(
@@ -208,21 +220,14 @@ fun LifeIndexDetailPopup(
                     .padding(
                         start = Constants.ITEM_PANEL_MARGIN.dp,
                         end = Constants.ITEM_PANEL_MARGIN.dp,
-                        top = cardTopDp.coerceAtLeast(0.dp)
+                        top = animatedCardTopDp
                     ),
-                horizontalAlignment = alignment.let {
-                    when (it) {
-                        Alignment.TopStart -> Alignment.Start
-                        Alignment.TopEnd -> Alignment.End
-                        else -> Alignment.CenterHorizontally
-                    }
-                }
+                horizontalAlignment = androidx.compose.ui.BiasAlignment.Horizontal(animatedAlignmentBias)
             ) {
                 // 白色卡片（宽度自适应内容，最大不超过 grid 宽度）
                 val maxCardWidthDp = with(density) { (cellSizePx * 3).toDp() }
                 AppColumn(
                     modifier = Modifier
-                        .wrapContentWidth()
                         .widthIn(max = maxCardWidthDp)
                         .onSizeChanged { cardHeightPx = it.height.toFloat() }
                         .alpha(if (cardHeightPx == 0f) 0f else 1f)
@@ -231,8 +236,10 @@ fun LifeIndexDetailPopup(
                             colorResource(R.color.color_white),
                             RoundedCornerShape(12.dp)
                         )
+                        .animateContentSize(animationSpec = tween(200))
                         .padding(8.dp)
-                        .alpha(animatedContentOpacity)
+                        .alpha(animatedContentOpacity),
+                    fillMaxWidth = false
                 ) {
                     AppText(
                         text = displayData.name ?: "",
@@ -259,7 +266,7 @@ fun LifeIndexDetailPopup(
                 ) {
                     val arrowWidth = 12.dp.toPx()
                     val arrowHeight = 8.dp.toPx()
-                    val centerX = arrowXPx.coerceIn(arrowWidth / 2, size.width - arrowWidth / 2)
+                    val centerX = animatedArrowXPx.coerceIn(arrowWidth / 2, size.width - arrowWidth / 2)
                     val path = Path().apply {
                         moveTo(centerX - arrowWidth / 2, 0f)
                         lineTo(centerX, arrowHeight)

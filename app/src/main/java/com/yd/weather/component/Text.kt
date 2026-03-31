@@ -1,6 +1,7 @@
 package com.yd.weather.component
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.LocalTextStyle
@@ -169,6 +170,7 @@ fun AppText(
     onClick: (() -> Unit)? = null,
     style: TextStyle? = null,
     shadow: Shadow? = null,
+    autoSize: TextAutoSize? = null,
     selectable: Boolean = false
 ) {
     // 根据类型设置颜色
@@ -214,6 +216,7 @@ fun AppText(
                 maxLines = maxLines,
                 minLines = minLines,
                 onTextLayout = onTextLayout,
+                autoSize = autoSize,
                 color = if (textColor == Color.Unspecified) Color.Unspecified else textColor
             )
         }
@@ -227,6 +230,7 @@ fun AppText(
             maxLines = maxLines,
             minLines = minLines,
             onTextLayout = onTextLayout,
+            autoSize = autoSize,
             color = if (textColor == Color.Unspecified) Color.Unspecified else textColor
         )
     }

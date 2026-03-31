@@ -1,6 +1,7 @@
 package com.yd.weather.dialog
 
 import android.annotation.SuppressLint
+import android.view.HapticFeedbackConstants
 import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -45,6 +46,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -152,9 +154,12 @@ fun WeatherCitySelector(
         onBlurChange(blurAlpha.value * 30f)
     }
 
+    val view = LocalView.current
+
     // 入场动画（参照鸿蒙 aboutToAppear）
     LaunchedEffect(Unit) {
         delay(16)
+        view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
         launch { blurAlpha.animateTo(1f, tween(200)) }
         isSwiperShow = true
     }

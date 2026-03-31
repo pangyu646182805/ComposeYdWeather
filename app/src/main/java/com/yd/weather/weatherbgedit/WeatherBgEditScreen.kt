@@ -1,6 +1,16 @@
 package com.yd.weather.weatherbgedit
 
 import android.annotation.SuppressLint
+import android.view.HapticFeedbackConstants
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.DialogWindowProvider
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
@@ -14,7 +24,6 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -28,9 +37,14 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.platform.LocalView
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -103,11 +117,17 @@ internal fun WeatherBgEditRoute(
         onConfirm = { viewModel.confirm() }
     )
 
-    // 颜色输入对话框（用 Popup 拦截返回键，避免直接退出编辑页）
+    // 颜色输入对话框（Dialog 拦截返回键）
     if (showColorInputDialog) {
-        androidx.compose.ui.window.Popup(
-            onDismissRequest = { showColorInputDialog = false }
+        Dialog(
+            onDismissRequest = { },
+            properties = DialogProperties(
+                usePlatformDefaultWidth = false,
+                decorFitsSystemWindows = false
+            )
         ) {
+            // 去掉 Dialog 自带的遮罩
+            (LocalView.current.parent as? DialogWindowProvider)?.window?.setDimAmount(0.4f)
             ColorInputDialog(
                 onDismiss = { showColorInputDialog = false },
                 onColorInput = { hex ->
@@ -512,7 +532,8 @@ private fun hueGradientColors(): List<Color> {
 
 /**
  * 颜色 HEX 输入对话框（参照 Flutter ColorInputDialog）
- * 底部弹出，自定义 HEX 键盘（0-9, A-F, 删除），6 位输入完自动确认
+ * 两段式动画：内容面板 slideIn → 200ms 后键盘 slideIn
+ * 退场反向：键盘 slideOut → 200ms 后内容面板 slideOut → 关闭
  */
 @Composable
 private fun ColorInputDialog(
@@ -530,93 +551,170 @@ private fun ColorInputDialog(
     var currentInput by remember { mutableStateOf(List(6) { "" }) }
     var currentIndex by remember { mutableIntStateOf(0) }
 
-    // 全屏半透明遮罩 + 底部弹出面板
+    // 两段式动画状态
+    var contentVisible by remember { mutableStateOf(false) }
+    var keyboardVisible by remember { mutableStateOf(false) }
+    var isDismissing by remember { mutableStateOf(false) }
+
+    val view = LocalView.current
+    val scope = rememberCoroutineScope()
+
+    // 退场动画：键盘滑出 → 200ms → 内容滑出 → 200ms → 关闭
+    fun animateDismiss(onFinish: () -> Unit) {
+        if (isDismissing) return
+        isDismissing = true
+        scope.launch {
+            keyboardVisible = false
+            delay(200)
+            contentVisible = false
+            delay(200)
+            onFinish()
+        }
+    }
+
+    // 返回键走动画退场
+    BackHandler { animateDismiss(onDismiss) }
+
+    // 进场动画：内容滑入 → 200ms → 键盘滑入
+    LaunchedEffect(Unit) {
+        contentVisible = true
+        delay(200)
+        keyboardVisible = true
+    }
+
+    // 全屏半透明遮罩
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.4f))
-            .pointerInput(Unit) { detectTapGestures { onDismiss() } },
+            .pointerInput(Unit) { detectTapGestures { animateDismiss(onDismiss) } },
         contentAlignment = Alignment.BottomCenter
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp))
-                .background(colorResource(R.color.bg_color))
-                .pointerInput(Unit) { detectTapGestures { /* 拦截点击不穿透 */ } }
-                .navigationBarsPadding(),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Spacer(Modifier.height(24.dp))
-
-            // HEX 输入结果显示 #XXXXXX
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                InputResultCell("#")
-                currentInput.forEach { char ->
-                    InputResultCell(char)
-                }
-            }
-
-            Spacer(Modifier.height(32.dp))
-
-            // 分隔线
-            Box(
-                Modifier
-                    .fillMaxWidth()
-                    .height(0.5.dp)
-                    .background(colorResource(R.color.black).copy(alpha = 0.06f))
+        // 内容面板（从底部滑入/滑出）
+        AnimatedVisibility(
+            visible = contentVisible,
+            enter = slideInVertically(
+                initialOffsetY = { it },
+                animationSpec = tween(200)
+            ),
+            exit = slideOutVertically(
+                targetOffsetY = { it },
+                animationSpec = tween(200)
             )
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp))
+                    .background(colorResource(R.color.bg_color))
+                    .pointerInput(Unit) { detectTapGestures { /* 拦截点击不穿透 */ } },
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Spacer(Modifier.height(24.dp))
 
-            // 键盘区域 (6行3列)
-            for (row in 0 until 6) {
-                Row(Modifier.fillMaxWidth()) {
-                    for (col in 0 until 3) {
-                        val key = inputKeys[row * 3 + col]
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(54.dp)
-                                .border(
-                                    0.5.dp,
-                                    colorResource(R.color.black).copy(alpha = 0.06f)
-                                )
-                                .then(
-                                    if (key.isNotEmpty()) Modifier.alphaClick(onClick = {
-                                        if (key == "del") {
-                                            if (currentIndex > 0) {
-                                                currentIndex--
-                                                currentInput = currentInput.toMutableList().also {
-                                                    it[currentIndex] = ""
-                                                }
-                                            }
-                                        } else if (currentIndex <= 5) {
-                                            currentInput = currentInput.toMutableList().also {
-                                                it[currentIndex] = key
-                                            }
-                                            currentIndex++
-                                            // 6 位输满自动确认
-                                            if (currentIndex == 6) {
-                                                onColorInput(currentInput.joinToString(""))
+                // HEX 输入结果显示 #XXXXXX
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    InputResultCell("#")
+                    currentInput.forEach { char ->
+                        InputResultCell(char)
+                    }
+                }
+
+                Spacer(Modifier.height(32.dp))
+
+                // 键盘区域（固定高度 + 内部 slideIn）
+                Box(modifier = Modifier.height(54.dp * 6 + 0.5.dp)) {
+                    this@Column.AnimatedVisibility(
+                        visible = keyboardVisible,
+                        enter = slideInVertically(
+                            initialOffsetY = { it },
+                            animationSpec = tween(200)
+                        ),
+                        exit = slideOutVertically(
+                            targetOffsetY = { it },
+                            animationSpec = tween(200)
+                        )
+                    ) {
+                        Column {
+                            // 分隔线
+                            Box(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .height(0.5.dp)
+                                    .background(
+                                        colorResource(R.color.black).copy(alpha = 0.06f)
+                                    )
+                            )
+
+                            // 键盘 6行3列
+                            for (row in 0 until 6) {
+                                Row(Modifier.fillMaxWidth()) {
+                                    for (col in 0 until 3) {
+                                        val key = inputKeys[row * 3 + col]
+                                        Box(
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .height(54.dp)
+                                                .border(
+                                                    0.5.dp,
+                                                    colorResource(R.color.black)
+                                                        .copy(alpha = 0.06f)
+                                                )
+                                                .then(
+                                                    if (key.isNotEmpty()) Modifier.alphaClick(
+                                                        onClick = {
+                                                            view.performHapticFeedback(
+                                                                HapticFeedbackConstants.CLOCK_TICK
+                                                            )
+                                                            if (key == "del") {
+                                                                if (currentIndex > 0) {
+                                                                    currentIndex--
+                                                                    currentInput =
+                                                                        currentInput.toMutableList()
+                                                                            .also {
+                                                                                it[currentIndex] = ""
+                                                                            }
+                                                                }
+                                                            } else if (currentIndex <= 5) {
+                                                                currentInput =
+                                                                    currentInput.toMutableList()
+                                                                        .also {
+                                                                            it[currentIndex] = key
+                                                                        }
+                                                                currentIndex++
+                                                                // 6 位输满：键盘滑出再回调
+                                                                if (currentIndex == 6) {
+                                                                    val hex =
+                                                                        currentInput.joinToString("")
+                                                                    animateDismiss {
+                                                                        onColorInput(hex)
+                                                                    }
+                                                                }
+                                                            }
+                                                        }) else Modifier
+                                                ),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            if (key.isNotEmpty()) {
+                                                AppText(
+                                                    text = if (key == "del") "删除" else key,
+                                                    fontSize = if (key == "del") 20.sp else 26.sp,
+                                                    color = colorResource(R.color.black),
+                                                    fontWeight = FontWeight.Bold
+                                                )
                                             }
                                         }
-                                    }) else Modifier
-                                ),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            if (key.isNotEmpty()) {
-                                AppText(
-                                    text = if (key == "del") "删除" else key,
-                                    fontSize = if (key == "del") 20.sp else 26.sp,
-                                    color = colorResource(R.color.black),
-                                    fontWeight = FontWeight.Bold
-                                )
+                                    }
+                                }
                             }
                         }
                     }
                 }
+
+                // 导航栏区域（背景色延伸到导航栏）
+                Spacer(Modifier.navigationBarsPadding())
             }
         }
     }
@@ -631,7 +729,11 @@ private fun InputResultCell(text: String) {
             .background(colorResource(R.color.black).copy(alpha = 0.06f)),
         contentAlignment = Alignment.Center
     ) {
-        if (text.isNotEmpty()) {
+        AnimatedVisibility(
+            visible = text.isNotEmpty(),
+            enter = fadeIn(),
+            exit = fadeOut()
+        ) {
             AppText(
                 text = text,
                 fontSize = 22.sp,
