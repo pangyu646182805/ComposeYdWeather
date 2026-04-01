@@ -78,6 +78,7 @@ fun Modifier.bounceClick(
 
 fun Modifier.alphaClick(
     alphaPressed: Float = 0.4f,
+    onLongClick: (() -> Unit)? = null,
     onClick: () -> Unit = {}
 ): Modifier = composed {
     var isPressed by remember { mutableStateOf(false) }
@@ -91,9 +92,10 @@ fun Modifier.alphaClick(
 
     this
         .graphicsLayer { this.alpha = alpha }
-        .clickable(
+        .combinedClickable(
             interactionSource = remember { MutableInteractionSource() },
             indication = null,
+            onLongClick = onLongClick,
             onClick = onClick
         )
         .pointerInput(Unit) {

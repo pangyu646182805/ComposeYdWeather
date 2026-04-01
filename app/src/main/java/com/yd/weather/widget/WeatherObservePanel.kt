@@ -23,7 +23,8 @@ fun WeatherObservePanel(
     firstItemOffset: Float = 0f,
     firstVisibleItemIndex: Int = 0,
     enable: Boolean = true,
-    showHideWeatherContent: ((Boolean) -> Unit)? = null
+    showHideWeatherContent: ((Boolean) -> Unit)? = null,
+    onLongPress: (() -> Unit)? = null
 ) {
     if (itemTypeObserves.isNullOrEmpty()) return
     val fixedFirstItemOffset = when {
@@ -118,7 +119,8 @@ fun WeatherObservePanel(
                     panelOpacity = panelOpacity,
                     firstItemOffset = fixedFirstItemOffset,
                     firstVisibleItemIndex = fixedFirstVisibleItemIndex,
-                    showHideWeatherContent = if (enable) showHideWeatherContent else null
+                    showHideWeatherContent = if (enable) showHideWeatherContent else null,
+                    onLongPress = onLongPress
                 )
             }
         }

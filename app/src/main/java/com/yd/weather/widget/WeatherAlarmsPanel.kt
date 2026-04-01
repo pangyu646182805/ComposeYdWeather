@@ -1,7 +1,7 @@
 package com.yd.weather.widget
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -55,7 +55,8 @@ fun WeatherAlarmsPanel(
     firstItemOffset: Float = 0f,
     firstVisibleItemIndex: Int = 0,
     enable: Boolean = true,
-    showHideWeatherContent: ((Boolean) -> Unit)? = null
+    showHideWeatherContent: ((Boolean) -> Unit)? = null,
+    onLongPress: (() -> Unit)? = null
 ) {
     var showDetailPopup by remember { mutableStateOf(false) }
     var panelYPx by remember { mutableFloatStateOf(0f) }
@@ -79,13 +80,15 @@ fun WeatherAlarmsPanel(
             .onGloballyPositioned { coordinates ->
                 panelYPx = coordinates.positionOnScreen().y
             }
-            .clickable(
+            .combinedClickable(
                 indication = null,
-                interactionSource = remember { MutableInteractionSource() }
-            ) {
-                showHideWeatherContent?.invoke(false)
-                showDetailPopup = true
-            } else Modifier,
+                interactionSource = remember { MutableInteractionSource() },
+                onLongClick = onLongPress,
+                onClick = {
+                    showHideWeatherContent?.invoke(false)
+                    showDetailPopup = true
+                }
+            ) else Modifier,
         index = index,
         isDark = isDark,
         panelOpacity = panelOpacity,

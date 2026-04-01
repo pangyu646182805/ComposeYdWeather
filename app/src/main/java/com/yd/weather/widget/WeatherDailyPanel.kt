@@ -76,7 +76,8 @@ fun WeatherDailyPanel(
     firstVisibleItemIndex: Int = 0,
     enable: Boolean = true,
     weatherBg: List<Color> = emptyList(),
-    showHideWeatherContent: ((Boolean) -> Unit)? = null
+    showHideWeatherContent: ((Boolean) -> Unit)? = null,
+    onLongPress: (() -> Unit)? = null
 ) {
     var showDailyPopup by remember { mutableStateOf(false) }
     var popupInitialIndex by remember { mutableIntStateOf(0) }
@@ -170,7 +171,8 @@ fun WeatherDailyPanel(
                     popupInitialIndex = clickIndex
                     showHideWeatherContent?.invoke(false)
                     showDailyPopup = true
-                }
+                },
+                onLongPress = onLongPress
             )
             // 列表
             ListDailyWeather(
@@ -186,7 +188,8 @@ fun WeatherDailyPanel(
                     popupInitialIndex = clickIndex
                     showHideWeatherContent?.invoke(false)
                     showDailyPopup = true
-                }
+                },
+                onLongPress = onLongPress
             )
         }
     }
@@ -236,7 +239,8 @@ internal fun LineChartDailyWeather(
     forecast15: List<WeatherDetailData>? = null,
     weatherData: WeatherData? = null,
     visible: Boolean = true,
-    onItemClick: (Int) -> Unit = {}
+    onItemClick: (Int) -> Unit = {},
+    onLongPress: (() -> Unit)? = null
 ) {
     if (forecast15.isNullOrEmpty()) return
     AnimatedVisibility(visible = visible, enter = fadeIn(), exit = fadeOut()) {
@@ -249,7 +253,8 @@ internal fun LineChartDailyWeather(
             itemsIndexed(forecast15) { index, item ->
                 LineChartDailyWeatherItem(
                     item, index, weatherData,
-                    onClick = { onItemClick(index) }
+                    onClick = { onItemClick(index) },
+                    onLongClick = onLongPress
                 )
             }
         }
@@ -263,7 +268,8 @@ internal fun ListDailyWeather(
     visible: Boolean = true,
     isExpand: Boolean = true,
     lookMore: () -> Unit,
-    onItemClick: (Int) -> Unit = {}
+    onItemClick: (Int) -> Unit = {},
+    onLongPress: (() -> Unit)? = null
 ) {
     if (forecast15.isNullOrEmpty()) return
     val rotation by animateFloatAsState(
@@ -282,7 +288,8 @@ internal fun ListDailyWeather(
                 itemsIndexed(forecast15) { index, item ->
                     ListDailyWeatherItem(
                         item, weatherData,
-                        onClick = { onItemClick(index) }
+                        onClick = { onItemClick(index) },
+                        onLongClick = onLongPress
                     )
                 }
             }
@@ -317,13 +324,14 @@ internal fun LineChartDailyWeatherItem(
     item: WeatherDetailData,
     index: Int = 0,
     weatherData: WeatherData?,
-    onClick: () -> Unit = {}
+    onClick: () -> Unit = {},
+    onLongClick: (() -> Unit)? = null
 ) {
     val isBefore = Commons.isBefore(item.date)
     val maxTempData = weatherData?.forecast15?.maxByOrNull { it.high }
     val minTempData = weatherData?.forecast15?.minByOrNull { it.low }
     WrapColumn(
-        modifier = Modifier.alphaClick(onClick = onClick),
+        modifier = Modifier.alphaClick(onLongClick = onLongClick, onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         VerticalSpace(height = 12.dp)
@@ -409,7 +417,8 @@ internal fun LineChartDailyWeatherItem(
 internal fun ListDailyWeatherItem(
     item: WeatherDetailData,
     weatherData: WeatherData?,
-    onClick: () -> Unit = {}
+    onClick: () -> Unit = {},
+    onLongClick: (() -> Unit)? = null
 ) {
     val isBefore = Commons.isBefore(item.date)
     val maxTempData = weatherData?.forecast15?.maxByOrNull { it.high }
@@ -419,7 +428,7 @@ internal fun ListDailyWeatherItem(
             .fillMaxWidth()
             .height(Constants.DAILY_WEATHER_ITEM_HEIGHT.dp)
             .padding(horizontal = 16.dp)
-            .alphaClick(onClick = onClick)
+            .alphaClick(onLongClick = onLongClick, onClick = onClick)
     ) {
         AppRow(
             modifier = Modifier

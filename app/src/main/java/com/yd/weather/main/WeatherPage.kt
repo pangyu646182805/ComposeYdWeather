@@ -167,7 +167,8 @@ fun WeatherPage(
                     onContentVisibilityChange = { show -> topBarOpacity = if (show) 1f else 0f },
                     onCardSortButtonClick = {
                         mainViewModel.navigate(CardSortRoutes.CardSort)
-                    }
+                    },
+                    onLongPress = { showCitySelector = true }
                 )
             }
             val animatedTopBarOpacity by animateFloatAsState(

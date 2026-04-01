@@ -51,7 +51,8 @@ fun WeatherContentList(
     previewCity: Boolean = false,
     onRefresh: (() -> Unit)? = null,
     onRefreshState: ((RefreshState) -> Unit)? = null,
-    onContentVisibilityChange: ((Boolean) -> Unit)? = null
+    onContentVisibilityChange: ((Boolean) -> Unit)? = null,
+    onLongPress: (() -> Unit)? = null
 ) {
     var contentOpacity by remember { mutableFloatStateOf(1f) }
     val showHideWeatherContent: (Boolean) -> Unit = { show ->
@@ -164,7 +165,8 @@ fun WeatherContentList(
                                 panelOpacity = panelOpacity,
                                 firstItemOffset = firstItemOffset,
                                 firstVisibleItemIndex = firstVisibleItemIndex,
-                                showHideWeatherContent = showHideWeatherContent
+                                showHideWeatherContent = showHideWeatherContent,
+                                onLongPress = onLongPress
                             )
 
                             Constants.ITEM_TYPE_AIR_QUALITY -> WeatherAirQualityPanel(
@@ -174,7 +176,8 @@ fun WeatherContentList(
                                 panelOpacity = panelOpacity,
                                 firstItemOffset = firstItemOffset,
                                 firstVisibleItemIndex = firstVisibleItemIndex,
-                                showHideWeatherContent = showHideWeatherContent
+                                showHideWeatherContent = showHideWeatherContent,
+                                onLongPress = onLongPress
                             )
 
                             Constants.ITEM_TYPE_HOUR_WEATHER -> WeatherHourPanel(
@@ -194,7 +197,8 @@ fun WeatherContentList(
                                 firstItemOffset = firstItemOffset,
                                 firstVisibleItemIndex = firstVisibleItemIndex,
                                 weatherBg = weatherBg,
-                                showHideWeatherContent = showHideWeatherContent
+                                showHideWeatherContent = showHideWeatherContent,
+                                onLongPress = onLongPress
                             )
 
                             Constants.ITEM_TYPE_OBSERVE -> WeatherObservePanel(
@@ -206,7 +210,8 @@ fun WeatherContentList(
                                 panelOpacity = panelOpacity,
                                 firstItemOffset = firstItemOffset,
                                 firstVisibleItemIndex = firstVisibleItemIndex,
-                                showHideWeatherContent = showHideWeatherContent
+                                showHideWeatherContent = showHideWeatherContent,
+                                onLongPress = onLongPress
                             )
 
                             Constants.ITEM_TYPE_LIFE_INDEX -> WeatherLifeIndexPanel(

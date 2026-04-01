@@ -1,6 +1,6 @@
 package com.yd.weather.widget
 
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -39,7 +39,8 @@ fun WeatherObserveForecase40Panel(
     panelOpacity: Float = 0.1f,
     firstItemOffset: Float = 0f,
     firstVisibleItemIndex: Int = 0,
-    showHideWeatherContent: ((Boolean) -> Unit)? = null
+    showHideWeatherContent: ((Boolean) -> Unit)? = null,
+    onLongPress: (() -> Unit)? = null
 ) {
     var showDetailPopup by remember { mutableStateOf(false) }
     var panelYPx by remember { mutableFloatStateOf(0f) }
@@ -90,13 +91,15 @@ fun WeatherObserveForecase40Panel(
                 .padding(start = 16.dp, end = 16.dp)
                 .clip(WeatherPanelClip(offsetPx))
                 .then(
-                    if (showHideWeatherContent != null) Modifier.clickable(
+                    if (showHideWeatherContent != null) Modifier.combinedClickable(
                         indication = null,
                         interactionSource = remember { MutableInteractionSource() },
-                    ) {
-                        showHideWeatherContent.invoke(false)
-                        showDetailPopup = true
-                    } else Modifier
+                        onLongClick = onLongPress,
+                        onClick = {
+                            showHideWeatherContent.invoke(false)
+                            showDetailPopup = true
+                        }
+                    ) else Modifier
                 ),
             verticalArrangement = Arrangement.Center
         ) {
