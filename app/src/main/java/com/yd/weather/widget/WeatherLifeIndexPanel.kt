@@ -1,7 +1,9 @@
 package com.yd.weather.widget
 
 import android.annotation.SuppressLint
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -99,6 +101,11 @@ fun WeatherLifeIndexPanel(
                     gridContentXPx = pos.x
                     gridContentYPx = pos.y + stickyHeaderPx
                 }
+                .clickable(
+                    indication = null,
+                    interactionSource = remember { MutableInteractionSource() },
+                    onClick = {}
+                )
                 .pointerInput(Unit) {
                     detectDragGesturesAfterLongPress(
                         onDragStart = { offset ->
