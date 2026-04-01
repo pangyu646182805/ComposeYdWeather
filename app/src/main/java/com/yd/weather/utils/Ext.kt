@@ -3,8 +3,8 @@ package com.yd.weather.utils
 import android.app.Activity
 import android.content.ContextWrapper
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
@@ -14,6 +14,9 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.window.DialogWindowProvider
 import androidx.core.view.WindowCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 
 @Composable
 fun <T> ObserveListAddition(list: List<T>?, onAdd: () -> Unit) {
@@ -31,13 +34,31 @@ fun <T> ObserveListAddition(list: List<T>?, onAdd: () -> Unit) {
 @Composable
 fun SetStatusBarStyle(isLight: Boolean) {
     val view = LocalView.current
-    SideEffect {
-        // Inside Dialog/ModalBottomSheet, use the dialog's own window
-        val window = (view.parent as? DialogWindowProvider)?.window
-            ?: view.context.findActivity()?.window
-            ?: return@SideEffect
-        WindowCompat.getInsetsController(window, view).apply {
-            isAppearanceLightStatusBars = isLight
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner, isLight) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                val window = (view.parent as? DialogWindowProvider)?.window
+                    ?: view.context.findActivity()?.window
+                    ?: return@LifecycleEventObserver
+                WindowCompat.getInsetsController(window, view).apply {
+                    isAppearanceLightStatusBars = isLight
+                }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        // 如果当前已经是RESUMED状态，立即应用
+        if (lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
+            val window = (view.parent as? DialogWindowProvider)?.window
+                ?: view.context.findActivity()?.window
+            if (window != null) {
+                WindowCompat.getInsetsController(window, view).apply {
+                    isAppearanceLightStatusBars = isLight
+                }
+            }
+        }
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
         }
     }
 }

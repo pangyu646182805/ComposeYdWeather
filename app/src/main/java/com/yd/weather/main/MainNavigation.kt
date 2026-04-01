@@ -6,8 +6,10 @@ import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
 import com.yd.weather.navigation.NavTransitions
+import com.yd.weather.routes.CardSortRoutes
 import com.yd.weather.routes.MainRoutes
 import com.yd.weather.routes.SelectCityRoutes
+import com.yd.weather.routes.WeatherBgRoutes
 
 /**
  * 注册主页面路由
@@ -22,6 +24,8 @@ fun NavGraphBuilder.mainScreen(sharedTransitionScope: SharedTransitionScope) {
         exitTransition = {
             if (targetState.destination.hasRoute<SelectCityRoutes.SelectCity>()) {
                 NavTransitions.SlideHorizontal.exit(this)
+            } else if (targetState.destination.hasRoute<WeatherBgRoutes.WeatherBgList>() || targetState.destination.hasRoute<CardSortRoutes.CardSort>()) {
+                NavTransitions.None.exit(this)
             } else {
                 NavTransitions.Fade.exit(this)
             }
@@ -29,6 +33,8 @@ fun NavGraphBuilder.mainScreen(sharedTransitionScope: SharedTransitionScope) {
         popEnterTransition = {
             if (initialState.destination.hasRoute<SelectCityRoutes.SelectCity>()) {
                 NavTransitions.SlideHorizontal.popEnter(this)
+            } else if (initialState.destination.hasRoute<WeatherBgRoutes.WeatherBgList>() || initialState.destination.hasRoute<CardSortRoutes.CardSort>()) {
+                NavTransitions.None.enter(this)
             } else {
                 NavTransitions.Fade.enter(this)
             }
