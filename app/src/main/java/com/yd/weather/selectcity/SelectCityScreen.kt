@@ -1,7 +1,7 @@
 package com.yd.weather.selectcity
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.ExperimentalSharedTransitionApi
+import com.yd.weather.navigation.AddCityResultKey
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -44,7 +44,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.NavHostController
+import androidx.compose.runtime.remember
 import com.yd.weather.R
 import com.yd.weather.app.ViewState
 import com.yd.weather.component.AppScaffold
@@ -65,10 +65,8 @@ import com.yd.weather.utils.ToastUtils
 import com.yd.weather.utils.rememberElasticScrollState
 import com.yd.weather.viewmodel.SelectCityViewModel
 
-@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 internal fun SelectCityRoute(
-    navController: NavHostController,
     canPop: Boolean = false,
     viewModel: SelectCityViewModel = hiltViewModel()
 ) {
@@ -81,12 +79,13 @@ internal fun SelectCityRoute(
     val locationState by viewModel.locationState.collectAsStateWithLifecycle()
     val searchResult by viewModel.searchResult.collectAsStateWithLifecycle()
 
-    val backStackEntry = navController.currentBackStackEntry
-    LaunchedEffect(backStackEntry) {
-        viewModel.observeAddCityResult(backStackEntry) { addCityId ->
-            val addCityData = selectCityData?.hotNational?.find { it.cityId == addCityId }
-                ?: selectCityData?.hotInternational?.find { it.cityId == addCityId }
-                ?: searchResult?.find { it.cityId == addCityId }
+    // 消费从 WeatherPreview 返回的添加城市结果（一次性，页面重新进入 composition 时检查）
+    val addCityResult = remember { viewModel.consumeResult(AddCityResultKey) }
+    LaunchedEffect(addCityResult) {
+        if (!addCityResult.isNullOrEmpty()) {
+            val addCityData = selectCityData?.hotNational?.find { it.cityId == addCityResult }
+                ?: selectCityData?.hotInternational?.find { it.cityId == addCityResult }
+                ?: searchResult?.find { it.cityId == addCityResult }
             viewModel.addCity(addCityData)
         }
     }

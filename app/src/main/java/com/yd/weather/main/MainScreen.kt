@@ -1,8 +1,5 @@
 package com.yd.weather.main
 
-import androidx.compose.animation.AnimatedContentScope
-import androidx.compose.animation.ExperimentalSharedTransitionApi
-import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -23,11 +20,8 @@ import com.yd.weather.utils.SetStatusBarStyle
 import com.yd.weather.viewmodel.CityManagerViewModel
 import com.yd.weather.viewmodel.MainViewModel
 
-@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 internal fun MainRoute(
-    sharedTransitionScope: SharedTransitionScope,
-    animatedContentScope: AnimatedContentScope,
     mainViewModel: MainViewModel = hiltViewModel(),
     cityManagerViewModel: CityManagerViewModel = hiltViewModel()
 ) {
@@ -58,7 +52,6 @@ internal fun MainRoute(
     )
 }
 
-@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 internal fun MainScreen(
     viewState: ViewState = ViewState.Loading,

@@ -1,5 +1,6 @@
 package com.yd.weather.routes
 
+import androidx.navigation3.runtime.NavKey
 import kotlinx.serialization.Serializable
 
 /**
@@ -10,5 +11,5 @@ object MainRoutes {
      * 主框架路由
      */
     @Serializable
-    data object Main
+    data object Main : NavKey
 }

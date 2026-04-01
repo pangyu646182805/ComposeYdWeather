@@ -2,7 +2,6 @@ package com.yd.weather.weatherpreview
 
 import android.app.Activity
 import androidx.activity.compose.PredictiveBackHandler
-import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
@@ -20,6 +19,7 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -50,11 +50,14 @@ import com.yd.weather.viewmodel.WeatherPreviewViewModel
 import com.yd.weather.widget.WeatherContentList
 import kotlin.coroutines.cancellation.CancellationException
 
-@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 internal fun WeatherPreviewRoute(
+    cityId: String? = null,
     viewModel: WeatherPreviewViewModel = hiltViewModel()
 ) {
+    // 传入路由参数并触发初始化（同步调用，确保首帧前数据就绑好）
+    viewModel.initialize(cityId)
+
     val statusBarTop = with(LocalDensity.current) {
         WindowInsets.statusBars.getTop(this).toDp()
     }

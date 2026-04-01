@@ -1,8 +1,6 @@
 package com.yd.weather.weatherbgedit
 
 import androidx.compose.ui.graphics.Color
-import androidx.lifecycle.SavedStateHandle
-import androidx.navigation.toRoute
 import com.yd.weather.app.AppState
 import com.yd.weather.model.WeatherBgModel
 import com.yd.weather.navigation.AppNavigator
@@ -18,54 +16,70 @@ import javax.inject.Inject
 class WeatherBgEditViewModel @Inject constructor(
     navigator: AppNavigator,
     appState: AppState,
-    savedStateHandle: SavedStateHandle
 ) : BaseViewModel(navigator, appState) {
-    private val route = savedStateHandle.toRoute<WeatherBgRoutes.WeatherBgEdit>()
     fun appState(): AppState = super.appState
 
-    val weatherType: String = route.weatherType
-    val isEdit: Boolean = route.isEdit
-    val isPreviewMode: Boolean = route.isPreviewMode
+    var weatherType: String = ""
+        private set
+    var isEdit: Boolean = false
+        private set
+    var isPreviewMode: Boolean = false
+        private set
 
-    private val initialArgbColors: List<Int> = route.colorsJson.takeIf { it.isNotEmpty() }
-        ?.let { Json.decodeFromString<List<Int>>(it) } ?: emptyList()
-    private val initialArgbNightColors: List<Int> = route.nightColorsJson.takeIf { it.isNotEmpty() }
-        ?.let { Json.decodeFromString<List<Int>>(it) } ?: emptyList()
-
-    private val editModel: WeatherBgModel? = if (isEdit && initialArgbColors.isNotEmpty()) {
-        WeatherBgModel(
-            supportEdit = true,
-            isSelected = false,
-            colors = initialArgbColors.map { Color(it).value },
-            nightColors = initialArgbNightColors.ifEmpty { initialArgbColors }.map { Color(it).value }
-        )
-    } else null
-
+    private var initialArgbColors: List<Int> = emptyList()
+    private var initialArgbNightColors: List<Int> = emptyList()
+    private var editModel: WeatherBgModel? = null
     private val _isNight = MutableStateFlow(false)
     val isNight: StateFlow<Boolean> = _isNight
 
-    // 颜色列表（RGB）
-    private val _colors = MutableStateFlow(initialArgbColors.map { Color(it) }.toMutableList())
+    private val _colors = MutableStateFlow<MutableList<Color>>(mutableListOf())
     val colors: StateFlow<List<Color>> = _colors
 
-    private val _nightColors = MutableStateFlow(
-        initialArgbNightColors.ifEmpty { initialArgbColors }.map { Color(it) }.toMutableList()
-    )
+    private val _nightColors = MutableStateFlow<MutableList<Color>>(mutableListOf())
     val nightColors: StateFlow<List<Color>> = _nightColors
 
-    // HSV 列表（参照 Flutter: _hsvColors / _hsvNightColors）
-    private val _hsvColors = MutableStateFlow(
-        initialArgbColors.map { colorToHsv(Color(it)) }.toMutableList()
-    )
+    private val _hsvColors = MutableStateFlow<MutableList<FloatArray>>(mutableListOf())
     val hsvColors: StateFlow<List<FloatArray>> = _hsvColors
 
-    private val _hsvNightColors = MutableStateFlow(
-        initialArgbNightColors.ifEmpty { initialArgbColors }.map { colorToHsv(Color(it)) }.toMutableList()
-    )
+    private val _hsvNightColors = MutableStateFlow<MutableList<FloatArray>>(mutableListOf())
     val hsvNightColors: StateFlow<List<FloatArray>> = _hsvNightColors
 
     private val _isStartSelected = MutableStateFlow(true)
     val isStartSelected: StateFlow<Boolean> = _isStartSelected
+
+    /**
+     * 由 Composable 调用，传入路由参数并触发初始化
+     */
+    fun initialize(route: WeatherBgRoutes.WeatherBgEdit) {
+        if (weatherType.isNotEmpty()) return
+
+        weatherType = route.weatherType
+        isEdit = route.isEdit
+        isPreviewMode = route.isPreviewMode
+
+        initialArgbColors = route.colorsJson.takeIf { it.isNotEmpty() }
+            ?.let { Json.decodeFromString<List<Int>>(it) } ?: emptyList()
+        initialArgbNightColors = route.nightColorsJson.takeIf { it.isNotEmpty() }
+            ?.let { Json.decodeFromString<List<Int>>(it) } ?: emptyList()
+
+        editModel = if (isEdit && initialArgbColors.isNotEmpty()) {
+            WeatherBgModel(
+                supportEdit = true,
+                isSelected = false,
+                colors = initialArgbColors.map { Color(it).value },
+                nightColors = initialArgbNightColors.ifEmpty { initialArgbColors }
+                    .map { Color(it).value }
+            )
+        } else null
+
+        _colors.value = initialArgbColors.map { Color(it) }.toMutableList()
+        _nightColors.value =
+            initialArgbNightColors.ifEmpty { initialArgbColors }.map { Color(it) }.toMutableList()
+        _hsvColors.value = initialArgbColors.map { colorToHsv(Color(it)) }.toMutableList()
+        _hsvNightColors.value =
+            initialArgbNightColors.ifEmpty { initialArgbColors }.map { colorToHsv(Color(it)) }
+                .toMutableList()
+    }
 
     fun toggleNight(night: Boolean) {
         _isNight.value = night

@@ -74,8 +74,12 @@ import com.yd.weather.widget.WeatherCitySnapshot
 
 @Composable
 internal fun WeatherBgEditRoute(
+    route: com.yd.weather.routes.WeatherBgRoutes.WeatherBgEdit? = null,
     viewModel: WeatherBgEditViewModel = hiltViewModel()
 ) {
+    // 传入路由参数并触发初始化（同步调用，确保首帧前数据就绑好）
+    if (route != null) viewModel.initialize(route)
+
     val isNight by viewModel.isNight.collectAsStateWithLifecycle()
     val colors by viewModel.colors.collectAsStateWithLifecycle()
     val nightColors by viewModel.nightColors.collectAsStateWithLifecycle()

@@ -1,9 +1,7 @@
 package com.yd.weather.viewmodel
 
 import androidx.compose.ui.graphics.Color
-import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
-import androidx.navigation.toRoute
 import com.yd.weather.app.AppState
 import com.yd.weather.app.ViewState
 import com.yd.weather.config.Constants
@@ -13,7 +11,6 @@ import com.yd.weather.navigation.AppNavigator
 import com.yd.weather.net.ResultHandler
 import com.yd.weather.net.WeatherRepository
 import com.yd.weather.net.asResult
-import com.yd.weather.routes.WeatherPreviewRoutes
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -23,11 +20,10 @@ import javax.inject.Inject
 class WeatherPreviewViewModel @Inject constructor(
     navigator: AppNavigator,
     private val _appState: AppState,
-    savedStateHandle: SavedStateHandle,
     private val weatherRepository: WeatherRepository,
 ) : BaseViewModel(navigator, _appState) {
-    val cityId: String? =
-        savedStateHandle.toRoute<WeatherPreviewRoutes.WeatherPreview>().cityId
+    var cityId: String? = null
+        private set
 
     private val _weatherBg = MutableStateFlow<List<Color>>(arrayListOf())
     val weatherBg: StateFlow<List<Color>> = _weatherBg
@@ -49,7 +45,12 @@ class WeatherPreviewViewModel @Inject constructor(
 
     fun appState(): AppState = _appState
 
-    init {
+    /**
+     * 由 Composable 调用，传入路由参数并触发初始化
+     */
+    fun initialize(cityId: String?) {
+        if (_weatherBg.value.isNotEmpty()) return
+        this.cityId = cityId
         val weatherData = appState.currentCityData.value?.weatherData
         generateWeatherBg(null, weatherData?.weatherType, weatherData?.sunrise, weatherData?.sunset)
         obtainWeatherData()

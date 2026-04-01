@@ -1,5 +1,6 @@
 package com.yd.weather.routes
 
+import androidx.navigation3.runtime.NavKey
 import kotlinx.serialization.Serializable
 
 /**
@@ -14,5 +15,5 @@ object LaunchRoutes {
      * @author Joker.X
      */
     @Serializable
-    data object Splash
+    data object Splash : NavKey
 }

@@ -1,10 +1,11 @@
 package com.yd.weather.routes
 
+import androidx.navigation3.runtime.NavKey
 import kotlinx.serialization.Serializable
 
 object WeatherBgRoutes {
     @Serializable
-    object WeatherBgList
+    data object WeatherBgList : NavKey
 
     @Serializable
     data class WeatherBgEdit(
@@ -13,5 +14,5 @@ object WeatherBgRoutes {
         val nightColorsJson: String = "",
         val isEdit: Boolean = false,
         val isPreviewMode: Boolean = false
-    )
+    ) : NavKey
 }
