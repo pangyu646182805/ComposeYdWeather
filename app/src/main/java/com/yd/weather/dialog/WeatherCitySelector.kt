@@ -180,16 +180,20 @@ fun WeatherCitySelector(
     // 关闭弹窗（参照 Flutter exit + _dismiss）
     val exit: () -> Unit = {
         scope.launch {
-            // Swiper 滑出 + 背景淡出（同时进行，等滑出完成再关闭）
-            // 背景稍晚淡出，避免背景先消失而卡片还在
-            launch {
-                delay(100)
-                blurAlpha.animateTo(0f, tween(250, easing = FastOutSlowInEasing))
+            // Swiper 滑出 + 背景淡出（同时进行，等两者都完成再关闭）
+            kotlinx.coroutines.coroutineScope {
+                // 背景稍晚淡出，避免背景先消失而卡片还在
+                launch {
+                    delay(100)
+                    blurAlpha.animateTo(0f, tween(250, easing = FastOutSlowInEasing))
+                }
+                launch {
+                    swiperTranslateX.animateTo(
+                        -(screenWidthPx + itemWidthPx),
+                        tween(300, easing = FastOutSlowInEasing)
+                    )
+                }
             }
-            swiperTranslateX.animateTo(
-                -(screenWidthPx + itemWidthPx),
-                tween(300, easing = FastOutSlowInEasing)
-            )
             onDismiss()
         }
     }
