@@ -52,7 +52,7 @@
 1. **克隆项目**
 
 ```bash
-git clone https://github.com/yourname/ComposeYdWeather.git
+git clone https://github.com/pangyu646182805/ComposeYdWeather.git
 ```
 
 2. **配置和风天气 API Key**
