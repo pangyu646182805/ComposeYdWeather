@@ -20,6 +20,7 @@ import com.yd.weather.db.model.CityData
 import com.yd.weather.model.WeatherItemData
 import com.yd.weather.res.YdWeatherAppTheme
 import com.yd.weather.utils.SetStatusBarStyle
+import com.yd.weather.utils.isExpandedWidth
 import com.yd.weather.viewmodel.CityManagerViewModel
 import com.yd.weather.viewmodel.MainViewModel
 
@@ -75,6 +76,26 @@ internal fun MainScreen(
     cityManagerViewModel: CityManagerViewModel = hiltViewModel()
 ) {
     val cityManagerScrollState = rememberLazyListState()
+
+    // 大屏（平板 / 折叠展开）走 List-Detail；手机保持原有单页布局完全不变
+    if (isExpandedWidth()) {
+        SetStatusBarStyle(isLight = !isWeatherHeaderDark)
+        TabletMainScreen(
+            viewState = viewState,
+            weatherItems = weatherItems,
+            itemTypeObserves = itemTypeObserves,
+            weatherBg = weatherBg,
+            isWeatherHeaderDark = isWeatherHeaderDark,
+            isDark = isDark,
+            panelOpacity = panelOpacity,
+            addedCities = addedCities,
+            currentCityData = currentCityData,
+            mainViewModel = mainViewModel,
+            cityManagerViewModel = cityManagerViewModel
+        )
+        return
+    }
+
     SetStatusBarStyle(isLight = if (isShowWeatherPage) !isWeatherHeaderDark else true)
 
     Box(modifier = Modifier.fillMaxSize()) {
