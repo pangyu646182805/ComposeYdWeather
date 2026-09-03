@@ -11,5 +11,5 @@ import javax.inject.Singleton
 abstract class GeoModule {
     @Binds
     @Singleton
-    abstract fun bindGeoResolver(impl: ChainedGeoResolver): GeoResolver
+    abstract fun bindGeoResolver(impl: SystemGeocoderResolver): GeoResolver
 }
