@@ -19,11 +19,11 @@ import com.yd.weather.net.ResultHandler
 import com.yd.weather.net.WeatherRepository
 import com.yd.weather.net.asResult
 import com.yd.weather.routes.WeatherPreviewRoutes
-import com.yd.weather.utils.CoordinateConverter
 import com.yd.weather.utils.LocationProvider
 import com.yd.weather.utils.MMKVUtils
 import com.yd.weather.utils.PermissionUtils
 import com.yd.weather.utils.ToastUtils
+import com.yd.weather.utils.geo.GeoResolver
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -39,6 +39,7 @@ class SelectCityViewModel @Inject constructor(
     appState: AppState,
     private val weatherRepository: WeatherRepository,
     private val weatherDbRepository: WeatherDbRepository,
+    private val geoResolver: GeoResolver,
 ) : BaseViewModel(navigator, appState) {
     init {
         loadCityList()
@@ -102,7 +103,7 @@ class SelectCityViewModel @Inject constructor(
                 }
                 LogCat.e("latitude = ${location?.latitude} longitude = ${location?.longitude}")
                 if (location != null) {
-                    obtainLocationDataByLocation(location)
+                    resolveLocation(location)
                 } else {
                     _locationData.value = null
                     _locationState.value = 1
@@ -114,22 +115,11 @@ class SelectCityViewModel @Inject constructor(
         }
     }
 
-    private fun obtainLocationDataByLocation(location: Location) {
-        val transform = CoordinateConverter.wgs84ToGcj02(location.longitude, location.latitude)
-        ResultHandler.handleResultWithData(
-            scope = viewModelScope,
-            flow = weatherRepository.obtainLocationDataByLocation("${transform[1]},${transform[0]}")
-                .asResult(),
-            onData = { data ->
-                _locationData.value = data
-                _locationState.value = 1
-                locationSuccess(data)
-            },
-            onError = { _, _ ->
-                _locationData.value = null
-                _locationState.value = 1
-            }
-        )
+    private suspend fun resolveLocation(location: Location) {
+        val data = geoResolver.resolve(location)
+        _locationData.value = data
+        _locationState.value = 1
+        if (data != null) locationSuccess(data)
     }
 
     fun searchCity(searchKey: String, block: ((List<CityData>) -> Unit)? = null) {

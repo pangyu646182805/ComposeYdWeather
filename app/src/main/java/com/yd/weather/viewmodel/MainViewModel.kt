@@ -17,9 +17,9 @@ import com.yd.weather.navigation.AppNavigator
 import com.yd.weather.net.ResultHandler
 import com.yd.weather.net.WeatherRepository
 import com.yd.weather.net.asResult
-import com.yd.weather.utils.CoordinateConverter
 import com.yd.weather.utils.LocationProvider
 import com.yd.weather.utils.MMKVUtils
+import com.yd.weather.utils.geo.GeoResolver
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -35,6 +35,7 @@ class MainViewModel @Inject constructor(
     private val _appState: AppState,
     private val weatherRepository: WeatherRepository,
     private val weatherDbRepository: WeatherDbRepository,
+    private val geoResolver: GeoResolver,
     @param:ApplicationContext private val context: Context
 ) : BaseViewModel(navigator, _appState) {
     private val _isShowWeatherPage = MutableStateFlow(true)
@@ -212,49 +213,39 @@ class MainViewModel @Inject constructor(
                 }
                 if (location != null) {
                     hasCheckLocationCity = true
-                    val transform = CoordinateConverter.wgs84ToGcj02(location.longitude, location.latitude)
-                    ResultHandler.handleResultWithData(
-                        scope = viewModelScope,
-                        flow = weatherRepository.obtainLocationDataByLocation("${transform[1]},${transform[0]}")
-                            .asResult(),
-                        showToast = false,
-                        onData = { data ->
-                            val province = data.addressComponent?.province ?: ""
-                            if (appState.currentCityData.value?.name ==
-                                data.addressComponent?.district &&
-                                appState.currentCityData.value?.street ==
-                                data.addressComponent?.street &&
-                                (province.contains(appState.currentCityData.value?.prov ?: "") ||
-                                        (appState.currentCityData.value?.prov ?: "").contains(
-                                            province
-                                        ))
-                            ) {
-                                LogCat.e("定位位置相同")
-                            } else {
-                                searchCity(data.addressComponent?.district ?: "") { result ->
-                                    if (result.isNotEmpty()) {
-                                        val find = result.find {
-                                            it.name == data.addressComponent?.district && (province.contains(
-                                                it.prov ?: ""
-                                            ) || (it.prov ?: "").contains(province))
-                                        }
-                                        if (find != null) {
-                                            val cityData = find.copy(
-                                                key = Constants.LOCATION_CITY_ID,
-                                                isLocationCity = true,
-                                                street = data.addressComponent?.street
-                                            )
-                                            viewModelScope.launch {
-                                                weatherDbRepository.upsertCity(cityData)
-                                                appState.setCurrentCityData(cityData)
-                                                block.invoke(true)
-                                            }
-                                        }
+                    val data = geoResolver.resolve(location) ?: return@launch
+                    val province = data.addressComponent?.province ?: ""
+                    val currentCity = appState.currentCityData.value
+                    // 只比区县 + 省份，不比街道：能否拿到街道取决于走的是系统 Geocoder
+                    // 还是离线兜底，把它纳入比较会在两条路径间切换时误判成"位置变了"
+                    if (currentCity?.name == data.addressComponent?.district &&
+                        (province.contains(currentCity?.prov ?: "") ||
+                                (currentCity?.prov ?: "").contains(province))
+                    ) {
+                        LogCat.e("定位位置相同")
+                    } else {
+                        searchCity(data.addressComponent?.district ?: "") { result ->
+                            if (result.isNotEmpty()) {
+                                val find = result.find {
+                                    it.name == data.addressComponent?.district && (province.contains(
+                                        it.prov ?: ""
+                                    ) || (it.prov ?: "").contains(province))
+                                }
+                                if (find != null) {
+                                    val cityData = find.copy(
+                                        key = Constants.LOCATION_CITY_ID,
+                                        isLocationCity = true,
+                                        street = data.addressComponent?.street
+                                    )
+                                    viewModelScope.launch {
+                                        weatherDbRepository.upsertCity(cityData)
+                                        appState.setCurrentCityData(cityData)
+                                        block.invoke(true)
                                     }
                                 }
                             }
-                        },
-                    )
+                        }
+                    }
                 }
             }
         }
