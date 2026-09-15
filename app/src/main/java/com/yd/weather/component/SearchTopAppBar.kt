@@ -16,6 +16,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -35,6 +36,12 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.graphics.Color
+import com.kyant.backdrop.Backdrop
+import com.kyant.backdrop.drawPlainBackdrop
+import com.kyant.backdrop.effects.blur
+import com.kyant.backdrop.effects.lens
+import com.kyant.backdrop.effects.vibrancy
 import com.yd.weather.R
 import com.yd.weather.res.CommonIcon
 import com.yd.weather.res.YdWeatherAppTheme
@@ -48,6 +55,8 @@ fun SearchTopAppBar(
     initialSearchText: String = "",
     scrollBehavior: TopAppBarScrollBehavior? = null,
     canPop: Boolean = true,
+    /** 传入后搜索框改用液态玻璃；为 null 时退回原来的纯色底（Preview 用） */
+    backdrop: Backdrop? = null,
 ) {
     var searchText by rememberSaveable { mutableStateOf(initialSearchText) }
     val focusManager = LocalFocusManager.current
@@ -73,12 +82,37 @@ fun SearchTopAppBar(
             .statusBarsPadding()
             .height(48.dp),
         windowInsets = WindowInsets(0, 0, 0, 0),
+        colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
         title = {
+            val fieldShape = RoundedCornerShape(percent = 50)
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(percent = 50))
-                    .background(colorResource(R.color.card_color_02))
+                    .then(
+                        if (backdrop != null) {
+                            // 用 plain 版：drawBackdrop 默认会画一圈边缘高光和阴影，
+                            // 小圆按钮上不明显，拉成长条后整圈都看得见，边上就发白发脏。
+                            Modifier.drawPlainBackdrop(
+                                backdrop = backdrop,
+                                shape = { fieldShape },
+                                effects = {
+                                    vibrancy()
+                                    blur(2f.dp.toPx())
+                                    lens(8f.dp.toPx(), 16f.dp.toPx())
+                                },
+                            )
+                        } else Modifier
+                    )
+                    .clip(fieldShape)
+                    // 玻璃之上仍留一层半透明卡片色，维持搜索框与顶栏之间的层次；
+                    // 全靠折射的话，在浅色顶栏上几乎看不出边界。
+                    .background(
+                        if (backdrop != null) {
+                            colorResource(R.color.card_color_02).copy(alpha = 0.55f)
+                        } else {
+                            colorResource(R.color.card_color_02)
+                        }
+                    )
             ) {
                 CenterRow(
                     modifier = Modifier

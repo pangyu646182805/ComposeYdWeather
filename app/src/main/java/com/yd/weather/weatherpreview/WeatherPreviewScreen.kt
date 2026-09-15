@@ -14,11 +14,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -34,13 +32,15 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.size
+import androidx.annotation.DrawableRes
+import com.yd.weather.res.CommonIcon
 import com.yd.weather.R
 import com.yd.weather.component.AppRow
-import com.yd.weather.component.AppText
 import com.yd.weather.component.MultipleStatusView
 import com.yd.weather.component.bounceClick
 import com.yd.weather.navigation.AddCityResultKey
@@ -137,14 +137,14 @@ internal fun WeatherPreviewRoute(
             AppRow(
                 modifier = Modifier
                     .alpha(animatedTopBarOpacity)
-                    .padding(start = 12.dp, top = statusBarTop + 12.dp, end = 12.dp),
+                    .padding(start = 16.dp, top = statusBarTop + 12.dp, end = 16.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                FunctionButton("取消", isDark = isDark, panelOpacity = panelOpacity) {
+                FunctionButton(R.mipmap.ic_close_icon1, isDark = isDark, panelOpacity = panelOpacity) {
                     viewModel.navigateBack()
                 }
 
-                FunctionButton("添加", isDark = isDark, panelOpacity = panelOpacity) {
+                FunctionButton(R.mipmap.ic_add, isDark = isDark, panelOpacity = panelOpacity) {
                     viewModel.popBackStackWithResult(AddCityResultKey, viewModel.cityId ?: "")
                 }
             }
@@ -154,7 +154,7 @@ internal fun WeatherPreviewRoute(
 
 @Composable
 fun FunctionButton(
-    text: String,
+    @DrawableRes iconRes: Int,
     isDark: Boolean = false,
     panelOpacity: Float = 0.1f,
     onClick: () -> Unit
@@ -162,18 +162,18 @@ fun FunctionButton(
     Box(
         modifier = Modifier
             .bounceClick(onClick = onClick)
-            .height(32.dp)
+            // 正圆，直径与城市管理页顶栏按钮一致
+            .size(44.dp)
             .background(
                 colorResource(if (isDark) R.color.color_white else R.color.color_black).copy(alpha = panelOpacity),
-                RoundedCornerShape(percent = 50)
-            )
-            .padding(horizontal = 16.dp),
+                CircleShape
+            ),
         contentAlignment = Alignment.Center
     ) {
-        AppText(
-            text = text,
-            color = colorResource(R.color.color_white),
-            fontSize = 14.sp,
+        CommonIcon(
+            resId = iconRes,
+            size = 20.dp,
+            tint = colorResource(R.color.color_white),
         )
     }
 }

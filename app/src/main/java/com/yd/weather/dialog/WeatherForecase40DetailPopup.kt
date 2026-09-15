@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -44,6 +43,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.colorResource
@@ -67,6 +68,7 @@ import com.yd.weather.res.CommonIcon
 import com.yd.weather.widget.WeatherForecase40Chart
 import com.yd.weather.utils.Commons
 import com.yd.weather.utils.WeatherIconUtils
+import com.yd.weather.utils.rememberElasticScrollState
 import com.yd.weather.utils.getFormatDate
 import com.yd.weather.utils.isToday
 import com.yd.weather.utils.toDateString
@@ -76,6 +78,12 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.Calendar
 import java.util.Date
+
+/** 顶栏内容整体下移的量 */
+private val TitleBarTopPadding = 6.dp
+
+/** 顶栏与内容之间额外的留白 */
+private val ContentTopPadding = 6.dp
 
 @Composable
 fun WeatherForecase40DetailPopup(
@@ -94,6 +102,7 @@ fun WeatherForecase40DetailPopup(
 
     val density = LocalDensity.current
     val statusBarHeightPx = WindowInsets.statusBars.getTop(density).toFloat()
+    val elastic = rememberElasticScrollState()
 
     var boxWidthPx by remember { mutableFloatStateOf(0f) }
 
@@ -153,7 +162,9 @@ fun WeatherForecase40DetailPopup(
 
     // Animated position: from panel Y to top+statusBar+48+12
     val titleBarHeightPx = with(density) { 48.dp.toPx() }
-    val topPaddingPx = with(density) { 12.dp.toPx() }
+    // 一镜到底的起点要减掉顶栏之下的全部留白，
+    // 这两个值改了这里必须跟着改，否则展开动画的落点会偏
+    val topPaddingPx = with(density) { (TitleBarTopPadding + ContentTopPadding).toPx() }
     val startMarginTop = panelYPx - statusBarHeightPx - titleBarHeightPx - topPaddingPx
     val animatedMarginTop = startMarginTop * (1f - animProgress.value)
 
@@ -205,6 +216,7 @@ fun WeatherForecase40DetailPopup(
                 modifier = Modifier
                     .fillMaxWidth()
                     .statusBarsPadding()
+                    .padding(top = TitleBarTopPadding)
                     .height(48.dp)
                     .alpha(titleBarAlpha.value)
             ) {
@@ -215,15 +227,29 @@ fun WeatherForecase40DetailPopup(
                     color = colorResource(if (isWeatherHeaderDark) R.color.color_white else R.color.color_black),
                     fontWeight = FontWeight.Bold
                 )
-                CommonIcon(
+                Box(
                     modifier = Modifier
                         .align(Alignment.CenterStart)
+                        .padding(horizontal = 16.dp)
                         .alphaClick(onClick = exit)
-                        .padding(horizontal = 16.dp),
-                    resId = R.mipmap.ic_close_icon1,
-                    size = 22.dp,
-                    tint = colorResource(if (isWeatherHeaderDark) R.color.color_white else R.color.color_black)
-                )
+                        .size(44.dp)
+                        // 与天气首页右上角按钮同一套：深背景配白底，浅背景配黑底
+                        .background(
+                            color = if (isWeatherHeaderDark) {
+                                Color.White.copy(alpha = 0.22f)
+                            } else {
+                                Color.Black.copy(alpha = 0.12f)
+                            },
+                            shape = CircleShape,
+                        ),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    CommonIcon(
+                        resId = R.mipmap.ic_close_icon1,
+                        size = 22.dp,
+                        tint = colorResource(if (isWeatherHeaderDark) R.color.color_white else R.color.color_black)
+                    )
+                }
             }
 
             // Scrollable content
@@ -231,8 +257,15 @@ fun WeatherForecase40DetailPopup(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
-                    .verticalScroll(rememberScrollState())
+                    // 这两个 padding 必须在 verticalScroll 之外：
+                    // 放在里面就成了内容的一部分，一滚就跟着走，顶栏底下那道间隔会消失
+                    .padding(top = ContentTopPadding)
                     .padding(horizontal = 16.dp)
+                    // 圆角跟卡片一致，滚动内容在顶栏下方按圆角收边，不再是一刀切
+                    .clip(RoundedCornerShape(Constants.ITEM_PANEL_RADIUS.dp))
+                    .nestedScroll(elastic.connection)
+                    .graphicsLayer { translationY = elastic.overscrollOffset }
+                    .verticalScroll(rememberScrollState())
                     .clickable(
                         indication = null,
                         interactionSource = remember { MutableInteractionSource() },
@@ -341,7 +374,6 @@ fun WeatherForecase40DetailPopup(
                 }
 
                 VerticalSpace(height = 12.dp)
-                Spacer(Modifier.navigationBarsPadding())
             }
         }
     }

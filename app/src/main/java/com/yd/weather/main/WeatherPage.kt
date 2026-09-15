@@ -24,6 +24,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -223,11 +226,33 @@ fun WeatherPage(
 
 @Composable
 fun RightIcon(isWeatherHeaderDark: Boolean = false, onClick: () -> Unit) {
-    IconButton(onClick = onClick) {
-        CommonIcon(
-            resId = R.mipmap.ic_add,
-            size = 20.dp,
-            tint = colorResource(if (isWeatherHeaderDark) R.color.color_white else R.color.color_black),
-        )
+    IconButton(
+        onClick = onClick,
+        // M3 TopAppBar 的 actions 只留 4dp 边距，按钮会比城市管理页那两个更贴边。
+        // 补到 10dp，圆底右缘正好落在与列表卡片一致的 16dp 上。
+        modifier = Modifier.padding(end = 10.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                // 与城市管理页顶栏按钮同尺寸
+                .size(44.dp)
+                // 天气页背景是一整片纯色渐变，挂 drawBackdrop 模糊出来还是同一个颜色，
+                // 白白多一次离屏合成。这里只取城市管理页按钮的视觉，不要那层玻璃。
+                .background(
+                    color = if (isWeatherHeaderDark) {
+                        Color.White.copy(alpha = 0.22f)
+                    } else {
+                        Color.Black.copy(alpha = 0.12f)
+                    },
+                    shape = CircleShape,
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            CommonIcon(
+                resId = R.mipmap.ic_add,
+                size = 20.dp,
+                tint = colorResource(if (isWeatherHeaderDark) R.color.color_white else R.color.color_black),
+            )
+        }
     }
 }

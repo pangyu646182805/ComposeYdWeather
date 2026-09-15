@@ -33,8 +33,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBarDefaults.topAppBarColors
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -57,9 +55,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.kyant.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import com.yd.weather.component.LiquidGlassTopBar
+import com.yd.weather.component.liquidGlassTopBarHeight
+import com.yd.weather.component.alphaClick
 import com.yd.weather.R
 import com.yd.weather.component.AppText
-import com.yd.weather.component.CenterTopAppBar
 import com.yd.weather.component.bounceClick
 import com.yd.weather.config.Constants
 import com.yd.weather.model.WeatherBgModel
@@ -150,41 +152,17 @@ private fun WeatherBgListScreen(
         }
     }
 
-    Column(
+    // 顶栏改为浮层，内容从它底下滚过去
+    val backdrop = rememberLayerBackdrop()
+
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .background(colorResource(R.color.bg_color))
     ) {
-        CenterTopAppBar(
-            titleText = "天气背景",
-            colors = topAppBarColors(containerColor = colorResource(R.color.transparent)),
-            navigationIcon = {
-                IconButton(onClick = onBack) {
-                    CommonIcon(
-                        resId = R.mipmap.ic_close_icon1,
-                        size = 20.dp,
-                        tint = colorResource(R.color.black),
-                    )
-                }
-            },
-            showBackIcon = false,
-            actions = {
-                TextButton(onClick = {
-                    if (isShowMenu) onRemoveAll() else onToggleNight()
-                }) {
-                    AppText(
-                        text = if (isShowMenu) "全部删除" else if (isNight) "日间" else "夜间",
-                        color = colorResource(R.color.black),
-                        fontSize = 14.sp
-                    )
-                }
-            }
-        )
-
         Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f)
+                .fillMaxSize()
                 .clipToBounds()
         ) {
         LazyColumn(
@@ -193,8 +171,12 @@ private fun WeatherBgListScreen(
                 .fillMaxSize()
                 .nestedScroll(elastic.connection)
                 .graphicsLayer { translationY = elastic.overscrollOffset }
-                .navigationBarsPadding(),
-            contentPadding = PaddingValues(bottom = 16.dp)
+                .navigationBarsPadding()
+                .layerBackdrop(backdrop),
+            contentPadding = PaddingValues(
+                top = liquidGlassTopBarHeight(),
+                bottom = 16.dp
+            )
         ) {
             items(weatherBgMap.keys.toList(), key = { it }) { weatherType ->
                 val models = weatherBgMap[weatherType] ?: emptyList()
@@ -272,6 +254,34 @@ private fun WeatherBgListScreen(
             }
         }
         }
+
+        LiquidGlassTopBar(
+            backdrop = backdrop,
+            modifier = Modifier.align(Alignment.TopCenter),
+            title = "天气背景",
+            navigationIcon = {
+                IconButton(onClick = onBack) {
+                    CommonIcon(
+                        resId = R.mipmap.ic_close_icon1,
+                        size = 20.dp,
+                        tint = colorResource(R.color.black),
+                    )
+                }
+            },
+            actions = {
+                // 不用 TextButton：它自带 Material 水波纹（取主题主色，是绿的），
+                // contentPadding 清零后 ripple 缩成文字大小一团，很扎眼。
+                // 改用项目自己的 alphaClick，和卡片排序页的「恢复默认」保持一致。
+                AppText(
+                    modifier = Modifier.alphaClick {
+                        if (isShowMenu) onRemoveAll() else onToggleNight()
+                    },
+                    text = if (isShowMenu) "全部删除" else if (isNight) "日间" else "夜间",
+                    color = colorResource(R.color.black),
+                    fontSize = 14.sp
+                )
+            }
+        )
     }
 }
 

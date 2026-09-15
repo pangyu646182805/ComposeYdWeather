@@ -26,7 +26,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.TopAppBarDefaults.topAppBarColors
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -43,16 +42,24 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.yd.weather.R
 import com.yd.weather.component.AppColumn
 import com.yd.weather.component.AppText
-import com.yd.weather.component.CenterTopAppBar
+import com.kyant.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import com.yd.weather.component.LiquidGlassTopBar
+import com.yd.weather.component.liquidGlassTopBarHeight
 import com.yd.weather.component.HorizontalSpace
 import com.yd.weather.component.VerticalSpace
 import com.yd.weather.component.alphaClick
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.graphics.graphicsLayer
+import com.yd.weather.utils.rememberElasticScrollState
+import androidx.compose.foundation.layout.PaddingValues
 import com.yd.weather.config.Constants
 import com.yd.weather.res.CommonIcon
 import com.yd.weather.utils.SetStatusBarStyle
@@ -108,56 +115,24 @@ internal fun CardSortRoute(
         label = "gridOpacity"
     )
 
+    // 顶栏改为浮层
+    val backdrop = rememberLayerBackdrop()
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(colorResource(R.color.bg_color))
     ) {
-        AppColumn(modifier = Modifier.fillMaxSize()) {
-            CenterTopAppBar(
-                titleText = "卡片排序",
-                colors = topAppBarColors(containerColor = colorResource(R.color.bg_color)),
-                navigationIcon = {
-                    IconButton(
-                        onClick = { viewModel.navigateBack() },
-                        enabled = isBackEnabled
-                    ) {
-                        CommonIcon(
-                            resId = R.mipmap.ic_close_icon1,
-                            size = 20.dp,
-                            tint = colorResource(R.color.black).copy(
-                                alpha = if (isBackEnabled) 1f else 0.2f
-                            )
-                        )
-                    }
-                },
-                actions = {
-                    AppText(
-                        modifier = Modifier
-                            .then(
-                                if (isBackEnabled) Modifier.alphaClick {
-                                    resetToDefault(
-                                        weatherCardSort,
-                                        observeCardSort,
-                                        viewModel
-                                    )
-                                } else Modifier
-                            )
-                            .padding(end = 16.dp),
-                        text = "恢复默认",
-                        fontSize = 15.sp,
-                        color = colorResource(R.color.black).copy(
-                            alpha = if (isBackEnabled) 1f else 0.2f
-                        )
-                    )
-                },
-                showBackIcon = false
-            )
-
+        AppColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .layerBackdrop(backdrop)
+        ) {
             Box(modifier = Modifier.weight(1f)) {
                 // 主卡片排序列表
                 WeatherCardSortList(
                     modifier = Modifier.alpha(animatedContentOpacity),
+                    topPadding = liquidGlassTopBarHeight(),
                     weatherCardSort = weatherCardSort,
                     onMove = { from, to ->
                         weatherCardSort.apply { add(to, removeAt(from)) }
@@ -188,9 +163,12 @@ internal fun CardSortRoute(
                 // 专业数据排序 Grid（参照 Flutter Offstage，始终保留在组合树中）
                 if (isShowObserveGrid) {
                     ObserveCardSortGrid(
+                        // 这块内部有 headerOffset 位移动画，不动它的结构，
+                        // 只把整体压到顶栏下面，免得被盖住
                         modifier = Modifier
                             .alpha(1f - animatedContentOpacity)
-                            .background(colorResource(R.color.bg_color)),
+                            .background(colorResource(R.color.bg_color))
+                            .padding(top = liquidGlassTopBarHeight()),
                         gridOpacity = animatedGridOpacity,
                         headerOffset = headerOffset.value.dp,
                         observeCardSort = observeCardSort,
@@ -218,6 +196,46 @@ internal fun CardSortRoute(
                 }
             }
         }
+
+        LiquidGlassTopBar(
+            backdrop = backdrop,
+            modifier = Modifier.align(Alignment.TopCenter),
+            title = "卡片排序",
+            navigationIcon = {
+                IconButton(
+                    onClick = { viewModel.navigateBack() },
+                    enabled = isBackEnabled
+                ) {
+                    CommonIcon(
+                        resId = R.mipmap.ic_close_icon1,
+                        size = 20.dp,
+                        tint = colorResource(R.color.black).copy(
+                            alpha = if (isBackEnabled) 1f else 0.2f
+                        )
+                    )
+                }
+            },
+            actions = {
+                AppText(
+                    modifier = Modifier
+                        .then(
+                            if (isBackEnabled) Modifier.alphaClick {
+                                resetToDefault(
+                                    weatherCardSort,
+                                    observeCardSort,
+                                    viewModel
+                                )
+                            } else Modifier
+                        ),
+                    // 顶栏内容层已经给了 16dp 边距，这里不能再叠一层，否则按钮往左缩
+                    text = "恢复默认",
+                    fontSize = 15.sp,
+                    color = colorResource(R.color.black).copy(
+                        alpha = if (isBackEnabled) 1f else 0.2f
+                    )
+                )
+            },
+        )
     }
 }
 
@@ -247,6 +265,7 @@ private fun resetToDefault(
 @Composable
 private fun WeatherCardSortList(
     modifier: Modifier = Modifier,
+    topPadding: Dp = 0.dp,
     weatherCardSort: List<Int>,
     onMove: (from: Int, to: Int) -> Unit,
     onDragStarted: () -> Unit,
@@ -255,18 +274,33 @@ private fun WeatherCardSortList(
 ) {
     val hapticFeedback = LocalHapticFeedback.current
     val lazyListState = rememberLazyListState()
+    val elastic = rememberElasticScrollState()
     val reorderableState = rememberReorderableLazyListState(lazyListState) { from, to ->
-        onMove(from.index, to.index)
-        hapticFeedback.performHapticFeedback(HapticFeedbackType.SegmentFrequentTick)
+        // 列表第 0 项是说明文字，reorderable 给的是 LazyColumn 的 item 下标，
+        // 要减 1 才对得上数据下标。不减的话每次移动都落在错位置，
+        // 布局变化又触发一次 onMove，循环下去就是一路震动。
+        val fromIndex = from.index - 1
+        val toIndex = to.index - 1
+        if (fromIndex >= 0 && toIndex >= 0) {
+            onMove(fromIndex, toIndex)
+            hapticFeedback.performHapticFeedback(HapticFeedbackType.SegmentFrequentTick)
+        }
     }
 
     AppColumn(modifier = modifier.fillMaxSize()) {
-        SortDescription("首页的天气卡片将会按照以下排序进行展示")
         LazyColumn(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .nestedScroll(elastic.connection)
+                .graphicsLayer { translationY = elastic.overscrollOffset },
             state = lazyListState,
-            verticalArrangement = Arrangement.spacedBy(ITEM_GAP.dp)
+            verticalArrangement = Arrangement.spacedBy(ITEM_GAP.dp),
+            contentPadding = PaddingValues(top = topPadding)
         ) {
+            // 放进列表里，才会跟着滚动和弹性一起走；
+            // 留在外面固定不动的话，回弹时列表会从它身上压过去
+            item { SortDescription("首页的天气卡片将会按照以下排序进行展示") }
+
             itemsIndexed(weatherCardSort, key = { _, item -> item }) { index, itemType ->
             ReorderableItem(reorderableState, itemType) { isDragging ->
                 val elevation by animateDpAsState(

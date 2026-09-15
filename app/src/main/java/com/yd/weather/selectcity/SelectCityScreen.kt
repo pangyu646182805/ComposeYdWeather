@@ -23,7 +23,6 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -47,11 +46,15 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import com.yd.weather.R
 import com.yd.weather.app.ViewState
+import com.kyant.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.yd.weather.component.AppScaffold
 import com.yd.weather.component.AppText
 import com.yd.weather.component.MultipleStatusView
+import com.yd.weather.component.LiquidGlassFadeHeight
+import com.yd.weather.component.LiquidGlassScrim
+import com.yd.weather.component.liquidGlassTopBarHeight
 import com.yd.weather.component.SearchTopAppBar
-import com.yd.weather.component.WrapColumn
 import com.yd.weather.component.WrapRow
 import com.yd.weather.component.alphaClick
 import com.yd.weather.component.bounceClick
@@ -142,14 +145,41 @@ internal fun SelectCityScreen(
     gotoWeatherPreviewPage: (CityData) -> Unit = {}
 ) {
     val focusManager = LocalFocusManager.current
+    // 顶栏改为浮在内容之上的玻璃层，backdrop 是它取用的背景来源
+    val backdrop = rememberLayerBackdrop()
+
     AppScaffold(
         modifier = Modifier.pointerInput(Unit) {
             detectTapGestures(onTap = {
                 focusManager.clearFocus()
             })
         },
-        topBar = {
-            WrapColumn(modifier = Modifier.background(colorResource(R.color.bg_color))) {
+        // 顶栏不占布局空间，交给下面的浮层，内容才能从它底下滚过去
+        topBar = {}
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            MultipleStatusView(
+                viewState = viewState,
+            ) {
+                SelectCityContent(
+                    modifier = Modifier.layerBackdrop(backdrop),
+                    selectCityData = selectCityData,
+                    addedCities = addedCities,
+                    locationData = locationData,
+                    locationState = locationState,
+                    obtainLocationPermission = obtainLocationPermission,
+                    searchResult = searchResult,
+                    gotoWeatherPreviewPage = gotoWeatherPreviewPage
+                )
+            }
+
+            // 必须在内容之后、且不被 layerBackdrop 包住，否则会自己模糊自己
+            Box(modifier = Modifier.align(Alignment.TopCenter)) {
+                // 玻璃比内容留白高出一个渐隐段
+                LiquidGlassScrim(
+                    backdrop = backdrop,
+                    height = liquidGlassTopBarHeight() + LiquidGlassFadeHeight,
+                )
                 SearchTopAppBar(
                     onBackClick = onBackClick,
                     onChange = onChange,
@@ -157,29 +187,16 @@ internal fun SelectCityScreen(
                         if (it.isEmpty()) ToastUtils.show("请输入搜索关键字")
                     },
                     canPop = canPop,
+                    backdrop = backdrop,
                 )
-                HorizontalDivider(thickness = 0.5.dp, color = colorResource(R.color.color_line))
             }
-        }
-    ) {
-        MultipleStatusView(
-            viewState = viewState,
-        ) {
-            SelectCityContent(
-                selectCityData = selectCityData,
-                addedCities = addedCities,
-                locationData = locationData,
-                locationState = locationState,
-                obtainLocationPermission = obtainLocationPermission,
-                searchResult = searchResult,
-                gotoWeatherPreviewPage = gotoWeatherPreviewPage
-            )
         }
     }
 }
 
 @Composable
 private fun SelectCityContent(
+    modifier: Modifier = Modifier,
     selectCityData: SelectCityData? = null,
     addedCities: List<CityData>,
     locationData: LocationData? = null,
@@ -188,7 +205,7 @@ private fun SelectCityContent(
     searchResult: List<CityData>? = null,
     gotoWeatherPreviewPage: (CityData) -> Unit = {}
 ) {
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = modifier.fillMaxSize()) {
         SelectCityGridContent(
             selectCityData = selectCityData,
             addedCities = addedCities,
@@ -226,11 +243,14 @@ private fun SelectCityGridContent(
             .graphicsLayer { translationY = elastic.overscrollOffset },
         columns = GridCells.Fixed(4),
         horizontalArrangement = Arrangement.spacedBy(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+        // 顶栏浮在内容上，这里补出等高留白，起始位置不变但能滚到它背后
+        contentPadding = PaddingValues(top = liquidGlassTopBarHeight())
     ) {
         val district = locationData?.addressComponent?.district
         item(span = { GridItemSpan(maxLineSpan) }) {
-            Box(modifier = Modifier.padding(top = 12.dp)) {
+            // 分割线去掉后这里可以收紧；留一点是为了接住顶栏玻璃的渐隐段
+            Box(modifier = Modifier.padding(top = 4.dp)) {
                 WrapRow(
                     modifier = Modifier
                         .bounceClick(onClick = {
@@ -259,7 +279,8 @@ private fun SelectCityGridContent(
             }
         }
         item(span = { GridItemSpan(maxLineSpan) }) {
-            Box(modifier = Modifier.padding(top = 4.dp)) {
+            // 上面紧挨着定位城市那颗胶囊，网格本身已有 16dp 行距，这里不再叠加
+            Box {
                 AppText(
                     text = "国内热门城市",
                     color = colorResource(R.color.text_color_01),
@@ -325,6 +346,7 @@ private fun SelectCitySearchContent(
                     .nestedScroll(elastic.connection)
                     .graphicsLayer { translationY = elastic.overscrollOffset },
                 contentPadding = PaddingValues(
+                    top = liquidGlassTopBarHeight(),
                     bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
                 )
             ) {

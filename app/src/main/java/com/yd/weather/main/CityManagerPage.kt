@@ -445,6 +445,7 @@ fun CityManagerHeader(
     AppText(
         modifier = Modifier
             .height(60.dp)
+            // 这 12dp 的空白正好接住顶栏玻璃的渐隐段，别去掉
             .padding(start = 16.dp, top = 12.dp),
         text = headerTitle,
         fontSize = 28.sp,

@@ -39,8 +39,13 @@ import com.yd.weather.R
 /** 顶栏内容区高度，与 [com.yd.weather.component.CenterTopAppBar] 保持一致 */
 val LiquidGlassTopBarContentHeight = 48.dp
 
-/** 模糊向下收尾的过渡段高度 */
-private val FadeHeight = 12.dp
+/**
+ * 模糊向下收尾的过渡段高度。
+ *
+ * 它**不计入**内容留白：这一段压在内容顶部的空白内边距上，
+ * 算进 contentPadding 的话内容会整体下移一个渐隐段。
+ */
+val LiquidGlassFadeHeight = 12.dp
 
 /** 圆形玻璃按钮的直径 */
 private val GlassButtonSize = 44.dp
@@ -69,16 +74,18 @@ private val ProgressiveBands = listOf(
 )
 
 /**
- * 顶栏整体占位高度（状态栏 + 内容区 + 底部过渡段）。
+ * 顶栏内容留白（状态栏 + 内容区），与改造前 topBar 所占的高度一致。
  *
- * 列表要用它作为 contentPadding 的顶部值，滚动时内容能穿到顶栏背后去。
- * 过渡段必须算进来：模糊层画多高，内容就得让开多高，
- * 否则那一段会静静压在列表第一项上，形成一块说不清的色块。
+ * 列表用它作为 contentPadding 的顶部值，内容位置和原来分毫不差，
+ * 滚动时又能穿到顶栏背后去。
+ *
+ * 玻璃层要比它高出一个 [LiquidGlassFadeHeight] 用于渐隐，
+ * 那一段正好落在内容自身的顶部内边距上，压不到文字。
  */
 @Composable
 fun liquidGlassTopBarHeight(): Dp =
     WindowInsets.statusBars.asPaddingValues().calculateTopPadding() +
-            LiquidGlassTopBarContentHeight + FadeHeight
+            LiquidGlassTopBarContentHeight
 
 /**
  * 液态玻璃顶栏。
@@ -100,6 +107,8 @@ fun liquidGlassTopBarHeight(): Dp =
  * @param titleAlpha 居中标题透明度，配合大标题滚动淡入
  * @param navigationIcon 左侧按钮内容，外层已套好玻璃圆底
  * @param actionIcon 右侧按钮内容，外层已套好玻璃圆底
+ * @param actions 右侧自定义内容，原样摆放（文字按钮等不适合套圆底的场景）；
+ *                与 [actionIcon] 二选一
  */
 @Composable
 fun LiquidGlassTopBar(
@@ -108,10 +117,10 @@ fun LiquidGlassTopBar(
     modifier: Modifier = Modifier,
     titleAlpha: Float = 1f,
     navigationIcon: @Composable (() -> Unit)? = null,
-    actionIcon: @Composable (() -> Unit)? = null
+    actionIcon: @Composable (() -> Unit)? = null,
+    actions: @Composable (() -> Unit)? = null
 ) {
-    val barHeight = liquidGlassTopBarHeight()
-    val scrimColor = MaterialTheme.colorScheme.background
+    val barHeight = liquidGlassTopBarHeight() + LiquidGlassFadeHeight
 
     Box(modifier.fillMaxWidth()) {
         LiquidGlassScrim(backdrop = backdrop, height = barHeight)
@@ -148,6 +157,8 @@ fun LiquidGlassTopBar(
                     modifier = Modifier.align(Alignment.CenterEnd),
                     content = actionIcon,
                 )
+            } else if (actions != null) {
+                Box(modifier = Modifier.align(Alignment.CenterEnd)) { actions() }
             }
         }
     }
