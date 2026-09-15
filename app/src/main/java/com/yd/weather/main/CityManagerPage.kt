@@ -11,8 +11,6 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -68,9 +66,15 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.drake.logcat.LogCat
 import com.yd.weather.R
+import com.kyant.backdrop.Backdrop
+import com.kyant.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.yd.weather.app.AppState
 import com.yd.weather.component.AppRow
 import com.yd.weather.component.AppScaffold
+import com.yd.weather.component.LiquidGlassScrim
+import com.yd.weather.component.LiquidGlassTopBar
+import com.yd.weather.component.liquidGlassTopBarHeight
 import com.yd.weather.component.AppText
 import com.yd.weather.component.StartAlignColumn
 import com.yd.weather.component.SwipeRevealLayout
@@ -177,46 +181,29 @@ fun CityManagerPage(
         }
     }
 
+    // 顶栏改为浮在列表之上的玻璃层，backdrop 是它取用的背景来源
+    val backdrop = rememberLayerBackdrop()
+    val topBarHeightPx = with(density) { liquidGlassTopBarHeight().toPx() }
+
     AppScaffold(
-        titleText = title,
-        titleAlpha = centerTitleAlpha,
-        navigationIcon = {
-            LeftIcon(isEditMode = isEditMode) {
-                if (isEditMode) {
-                    viewModel.closeEditMode()
-                } else {
-                    mainViewModel.showWeatherPage(viewModel, scrollState)
-                }
-            }
-        },
-        topBarActions = {
-            RightIcon(
-                isEditMode = isEditMode,
-                isSelectedAll = viewModel.isSelectedAll(addedCities)
-            ) {
-                if (isEditMode) {
-                    if (viewModel.isSelectedAll(addedCities)) {
-                        viewModel.clearSelected()
-                    } else {
-                        viewModel.selectedAll(addedCities)
-                    }
-                } else {
-                    viewModel.toSelectCityPage()
-                }
-            }
-        }
+        // 顶栏不再占布局空间，交给下面的 LiquidGlassTopBar 叠在内容上
+        topBar = {}
     ) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .onGloballyPositioned {
-                    viewModel.listOffsetY = it.positionOnScreen().y
-                    viewModel.listHeight = it.size.height
-                    println("listHeight = ${viewModel.listHeight}")
+                    // 顶栏改成浮层后这个 Box 从屏幕顶起算，但 LazyListItemInfo.offset
+                    // 是不含 contentPadding 的。两处都要把顶栏留白补回来，
+                    // 否则一镜到底的目标位置会整体上移一个顶栏的高度。
+                    viewModel.listOffsetY = it.positionOnScreen().y + topBarHeightPx
+                    viewModel.listHeight = it.size.height - topBarHeightPx.toInt()
                 }
                 .graphicsLayer(clip = true), contentAlignment = Alignment.BottomCenter
         ) {
             CityList(
+                // 声明这一层是玻璃顶栏取用的背景源
+                modifier = Modifier.layerBackdrop(backdrop),
                 addedCities = addedCities,
                 appState = viewModel.appState(),
                 isEditMode = isEditMode,
@@ -260,7 +247,40 @@ fun CityManagerPage(
                 endIndex = viewModel.endIndex,
                 itemAlpha = itemAlpha
             )
+            // 必须在 CityList 之后、且不被 layerBackdrop 包住，否则会自己模糊自己
+            LiquidGlassTopBar(
+                backdrop = backdrop,
+                title = title,
+                titleAlpha = centerTitleAlpha,
+                modifier = Modifier.align(Alignment.TopCenter),
+                navigationIcon = {
+                    LeftIcon(isEditMode = isEditMode) {
+                        if (isEditMode) {
+                            viewModel.closeEditMode()
+                        } else {
+                            mainViewModel.showWeatherPage(viewModel, scrollState)
+                        }
+                    }
+                },
+                actionIcon = {
+                    RightIcon(
+                        isEditMode = isEditMode,
+                        isSelectedAll = viewModel.isSelectedAll(addedCities)
+                    ) {
+                        if (isEditMode) {
+                            if (viewModel.isSelectedAll(addedCities)) {
+                                viewModel.clearSelected()
+                            } else {
+                                viewModel.selectedAll(addedCities)
+                            }
+                        } else {
+                            viewModel.toSelectCityPage()
+                        }
+                    }
+                }
+            )
             BottomOperateButton(
+                backdrop = backdrop,
                 isEditMode = isEditMode,
                 hasSelected = viewModel.hasSelected(),
                 deleteButtonEnable = deleteButtonEnable,
@@ -303,6 +323,7 @@ fun RightIcon(isEditMode: Boolean = false, isSelectedAll: Boolean = false, onCli
 
 @Composable
 fun CityList(
+    modifier: Modifier = Modifier,
     addedCities: List<CityData>? = null,
     appState: AppState,
     isEditMode: Boolean = false,
@@ -339,12 +360,14 @@ fun CityList(
 
     LazyColumn(
         state = scrollState,
-        modifier = Modifier
+        modifier = modifier
             .fillMaxSize()
             .nestedScroll(elastic.connection)
             .graphicsLayer { translationY = elastic.overscrollOffset },
         verticalArrangement = Arrangement.spacedBy(12.dp),
         contentPadding = PaddingValues(
+            // 顶栏现在浮在内容之上，这里补出等高的留白，内容起始位置不变但能滚到它背后
+            top = liquidGlassTopBarHeight(),
             bottom = WindowInsets.navigationBars.asPaddingValues()
                 .calculateBottomPadding() + if (isEditMode) 66.dp else 12.dp
         )
@@ -547,7 +570,16 @@ fun ReorderableCollectionItemScope.CityManagerItem(
                     .bounceClick(scalePressed = 0.9f, onClick = {
                         onItemClick(item)
                     }, onLongClick = {
-                        onDragHandleStarted(Offset.Zero)
+                        if (item?.isLocationCity == true) {
+                            // 定位城市不可拖拽排序，没有挂 longPressDraggableHandle，
+                            // 也就永远收不到 onDragStopped。
+                            // 这里若走 onDragHandleStarted，它禁用掉的删除按钮就再没人恢复，
+                            // 之后选中任何城市删除键都是灰的。长按它只该进编辑模式。
+                            toEditMode(item)
+                            hapticFeedback.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
+                        } else {
+                            onDragHandleStarted(Offset.Zero)
+                        }
                     })
                     .then(
                         if (!(item?.isLocationCity ?: false)) {
@@ -706,6 +738,7 @@ fun ReorderableCollectionItemScope.EditItem(
 
 @Composable
 fun BottomOperateButton(
+    backdrop: Backdrop,
     isEditMode: Boolean = false,
     hasSelected: Boolean = false,
     deleteButtonEnable: Boolean = false,
@@ -713,18 +746,26 @@ fun BottomOperateButton(
 ) {
     AnimatedVisibility(
         visible = isEditMode,
-        enter = fadeIn() + slideInVertically { it },
-        exit = fadeOut() + slideOutVertically { it },
+        enter = fadeIn(),
+        exit = fadeOut(),
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(colorResource(R.color.bg_color))
-                .navigationBarsPadding()
-                .pointerInput(Unit) {}
+                .pointerInput(Unit) {},
+            // 玻璃比按钮行高出一截用来渐隐，按钮得贴着底边，不能跟着玻璃往上跑
+            contentAlignment = Alignment.BottomCenter,
         ) {
+            // 和顶栏同一套玻璃，只是把实心的一端翻到下面
+            LiquidGlassScrim(
+                backdrop = backdrop,
+                height = 54.dp + WindowInsets.navigationBars.asPaddingValues()
+                    .calculateBottomPadding() + 16.dp,
+                fromTop = false,
+            )
             Box(
                 modifier = Modifier
+                    .navigationBarsPadding()
                     .height(54.dp)
                     .fillMaxWidth(),
                 contentAlignment = Alignment.Center,
