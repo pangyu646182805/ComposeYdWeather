@@ -234,7 +234,9 @@ fun LifeIndexDetailPopup(
                     .padding(
                         start = Constants.ITEM_PANEL_MARGIN.dp,
                         end = Constants.ITEM_PANEL_MARGIN.dp,
-                        top = animatedCardTopDp
+                        // 必须在这里再钳一次：targetValue 钳到 0 只保证终点非负，
+                        // 而 LowBouncy 的回弹会冲过 0 变成负数，padding 收到负值直接崩
+                        top = animatedCardTopDp.coerceAtLeast(0.dp)
                     ),
                 horizontalAlignment = androidx.compose.ui.BiasAlignment.Horizontal(animatedAlignmentBias)
             ) {
