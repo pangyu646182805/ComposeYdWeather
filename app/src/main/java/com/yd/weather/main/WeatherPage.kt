@@ -41,7 +41,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.draw.blur
 import com.yd.weather.R
 import com.yd.weather.app.ViewState
+import com.kyant.backdrop.backdrops.LayerBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.yd.weather.component.CenterTopAppBar
+import com.yd.weather.component.GlassIconButton
 import com.yd.weather.component.MultipleStatusView
 import com.yd.weather.db.model.CityData
 import com.yd.weather.dialog.WeatherCitySelector
@@ -74,6 +77,8 @@ fun WeatherPage(
 ) {
     val scope = rememberCoroutineScope()
     val weatherScrollState = rememberLazyListState()
+    // 列表内容作为背景来源，顶部玻璃和右上角按钮共用同一份
+    val backdrop = rememberLayerBackdrop()
     // 保存 refreshState 引用，用于数据加载完成后调用 refreshComplete()
     val refreshStateRef = remember { mutableStateOf<RefreshState?>(null) }
     var topBarOpacity by remember { mutableFloatStateOf(1f) }
@@ -155,6 +160,8 @@ fun WeatherPage(
                 WeatherContentList(
                     weatherScrollState = weatherScrollState,
                     isShowWeatherPage = isShowWeatherPage,
+                    glassTopBar = true,
+                    backdrop = backdrop,
                     animValue = animValue,
                     isDark = isDark,
                     panelOpacity = panelOpacity,
@@ -184,7 +191,10 @@ fun WeatherPage(
                 showBackIcon = false,
                 colors = topAppBarColors(containerColor = colorResource(R.color.transparent)),
                 actions = {
-                    RightIcon(isWeatherHeaderDark = isWeatherHeaderDark) {
+                    RightIcon(
+                        backdrop = backdrop,
+                        isWeatherHeaderDark = isWeatherHeaderDark,
+                    ) {
                         mainViewModel.showCityManagerPage(
                             cityManagerViewModel, cityManagerScrollState
                         )
@@ -225,34 +235,41 @@ fun WeatherPage(
 }
 
 @Composable
-fun RightIcon(isWeatherHeaderDark: Boolean = false, onClick: () -> Unit) {
+fun RightIcon(
+    backdrop: LayerBackdrop? = null,
+    isWeatherHeaderDark: Boolean = false,
+    onClick: () -> Unit
+) {
+    // 天气背景是深是浅，决定圆底压白还是压黑
+    val tint = if (isWeatherHeaderDark) {
+        Color.White.copy(alpha = 0.22f)
+    } else {
+        Color.Black.copy(alpha = 0.12f)
+    }
+    val icon: @Composable () -> Unit = {
+        CommonIcon(
+            resId = R.mipmap.ic_add,
+            size = 20.dp,
+            tint = colorResource(if (isWeatherHeaderDark) R.color.color_white else R.color.color_black),
+        )
+    }
+
     IconButton(
         onClick = onClick,
         // M3 TopAppBar 的 actions 只留 4dp 边距，按钮会比城市管理页那两个更贴边。
         // 补到 10dp，圆底右缘正好落在与列表卡片一致的 16dp 上。
         modifier = Modifier.padding(end = 10.dp),
     ) {
-        Box(
-            modifier = Modifier
-                // 与城市管理页顶栏按钮同尺寸
-                .size(44.dp)
-                // 天气页背景是一整片纯色渐变，挂 drawBackdrop 模糊出来还是同一个颜色，
-                // 白白多一次离屏合成。这里只取城市管理页按钮的视觉，不要那层玻璃。
-                .background(
-                    color = if (isWeatherHeaderDark) {
-                        Color.White.copy(alpha = 0.22f)
-                    } else {
-                        Color.Black.copy(alpha = 0.12f)
-                    },
-                    shape = CircleShape,
-                ),
-            contentAlignment = Alignment.Center,
-        ) {
-            CommonIcon(
-                resId = R.mipmap.ic_add,
-                size = 20.dp,
-                tint = colorResource(if (isWeatherHeaderDark) R.color.color_white else R.color.color_black),
-            )
+        if (backdrop != null) {
+            // 列表内容会从按钮底下滚过去，折射得到的是真实内容，与城市管理页一致
+            GlassIconButton(backdrop = backdrop, tint = tint, content = icon)
+        } else {
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .background(color = tint, shape = CircleShape),
+                contentAlignment = Alignment.Center,
+            ) { icon() }
         }
     }
 }

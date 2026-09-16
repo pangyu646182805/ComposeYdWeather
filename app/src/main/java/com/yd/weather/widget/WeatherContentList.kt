@@ -3,6 +3,9 @@ package com.yd.weather.widget
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
@@ -26,8 +29,15 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
+import com.kyant.backdrop.backdrops.LayerBackdrop
+import com.kyant.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import com.yd.weather.component.LiquidGlassFadeHeight
+import com.yd.weather.component.LiquidGlassScrim
 import com.yd.weather.component.VerticalSpace
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import com.yd.weather.config.Constants
 import com.yd.weather.db.model.CityData
 import com.yd.weather.model.WeatherItemData
@@ -46,6 +56,10 @@ fun WeatherContentList(
     weatherItems: List<WeatherItemData>? = null,
     itemTypeObserves: Array<Int>? = null,
     showSortCardButton: Boolean = true,
+    /** 顶部改用液态玻璃：内容一路延伸到状态栏底下，顶上盖一层渐进模糊 */
+    glassTopBar: Boolean = false,
+    /** 外部传入的 backdrop，让顶栏按钮之类页面级元素也能取到同一份背景 */
+    backdrop: LayerBackdrop? = null,
     onCardSortButtonClick: () -> Unit = {},
     weatherBg: List<Color> = emptyList(),
     previewCity: Boolean = false,
@@ -105,12 +119,27 @@ fun WeatherContentList(
 
     val density = LocalDensity.current
 
+    // 顶部玻璃取用的背景来源，只有 glassTopBar 时才真正挂上去
+    val ownBackdrop = rememberLayerBackdrop()
+    val contentBackdrop = backdrop ?: ownBackdrop
+    val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+    // 玻璃罩住的是大标题收缩到最小之后占的那一段
+    val glassHeight = statusBarTop + Constants.WEATHER_HEADER_MIN_HEIGHT.dp
+
     val firstItemOffset by remember {
         derivedStateOf { with(density) { weatherScrollState.firstVisibleItemScrollOffset.toDp().value } }
     }
     val firstVisibleItemIndex by remember {
         derivedStateOf { weatherScrollState.firstVisibleItemIndex }
     }
+
+    // 玻璃模式下关掉卡片的吸顶：内容要整条滚到顶栏背后去，
+    // 吸顶标题会停在被玻璃盖住的那片区域里，隔着模糊仍然看得见，很脏。
+    // WeatherStickyPanel 的 offset 在 index + 1 > firstVisibleItemIndex 时恒为 0，
+    // 把这两个值钉死就等于让每张卡片一直处在"还没滚到顶"的常态。
+    // 大标题的收缩另算，它用的仍是真实的 firstItemOffset。
+    val panelItemOffset = if (glassTopBar) 0f else firstItemOffset
+    val panelVisibleIndex = if (glassTopBar) 0 else firstVisibleItemIndex
 
     val animatedContentOpacity by animateFloatAsState(
         targetValue = contentOpacity,
@@ -130,10 +159,12 @@ fun WeatherContentList(
     ) {
         Box(
             modifier = Modifier
-                .statusBarsPadding()
+                // 玻璃模式下这两段垂直留白全部并进列表第一项，列表本身顶到屏幕顶，
+                // 内容才能滚到状态栏底下去
+                .then(if (glassTopBar) Modifier else Modifier.statusBarsPadding())
                 .graphicsLayer { translationY = refreshOffset }
                 .padding(
-                    top = Constants.WEATHER_HEADER_MIN_HEIGHT.dp,
+                    top = if (glassTopBar) 0.dp else Constants.WEATHER_HEADER_MIN_HEIGHT.dp,
                     start = Constants.ITEM_PANEL_MARGIN.dp,
                     end = Constants.ITEM_PANEL_MARGIN.dp
                 )
@@ -142,16 +173,29 @@ fun WeatherContentList(
                 modifier = Modifier
                     .fillMaxSize()
                     .nestedScroll(refreshState.connection)
-                    .clip(
-                        RoundedCornerShape(
-                            topStart = Constants.ITEM_PANEL_RADIUS.dp,
-                            topEnd = Constants.ITEM_PANEL_RADIUS.dp
+                    .then(
+                        // 玻璃模式下内容要滚到顶栏背后，再裁圆角就成了一刀切
+                        if (glassTopBar) Modifier.layerBackdrop(contentBackdrop)
+                        else Modifier.clip(
+                            RoundedCornerShape(
+                                topStart = Constants.ITEM_PANEL_RADIUS.dp,
+                                topEnd = Constants.ITEM_PANEL_RADIUS.dp
+                            )
                         )
                     ),
                 state = weatherScrollState
             ) {
                 item {
-                    VerticalSpace(height = (Constants.WEATHER_HEADER_MAX_HEIGHT - Constants.WEATHER_HEADER_MIN_HEIGHT).dp)
+                    // 不用 contentPadding：firstVisibleItemScrollOffset 要等 contentPadding
+                    // 滚完才开始涨，大标题的收缩曲线会整体延迟一个顶栏的高度才启动。
+                    // 并进第一项的高度里，firstItemOffset 照旧从 0 开始。
+                    VerticalSpace(
+                        height = if (glassTopBar) {
+                            statusBarTop + Constants.WEATHER_HEADER_MAX_HEIGHT.dp
+                        } else {
+                            (Constants.WEATHER_HEADER_MAX_HEIGHT - Constants.WEATHER_HEADER_MIN_HEIGHT).dp
+                        }
+                    )
                 }
                 if (!weatherItemsFilter.isNullOrEmpty()) {
                     itemsIndexed(
@@ -163,8 +207,8 @@ fun WeatherContentList(
                                 index = index,
                                 isDark = isDark,
                                 panelOpacity = panelOpacity,
-                                firstItemOffset = firstItemOffset,
-                                firstVisibleItemIndex = firstVisibleItemIndex,
+                                firstItemOffset = panelItemOffset,
+                                firstVisibleItemIndex = panelVisibleIndex,
                                 showHideWeatherContent = showHideWeatherContent,
                                 onLongPress = onLongPress
                             )
@@ -174,8 +218,8 @@ fun WeatherContentList(
                                 index = index,
                                 isDark = isDark,
                                 panelOpacity = panelOpacity,
-                                firstItemOffset = firstItemOffset,
-                                firstVisibleItemIndex = firstVisibleItemIndex,
+                                firstItemOffset = panelItemOffset,
+                                firstVisibleItemIndex = panelVisibleIndex,
                                 showHideWeatherContent = showHideWeatherContent,
                                 onLongPress = onLongPress
                             )
@@ -185,8 +229,8 @@ fun WeatherContentList(
                                 index = index,
                                 isDark = isDark,
                                 panelOpacity = panelOpacity,
-                                firstItemOffset = firstItemOffset,
-                                firstVisibleItemIndex = firstVisibleItemIndex
+                                firstItemOffset = panelItemOffset,
+                                firstVisibleItemIndex = panelVisibleIndex
                             )
 
                             Constants.ITEM_TYPE_DAILY_WEATHER -> WeatherDailyPanel(
@@ -194,8 +238,8 @@ fun WeatherContentList(
                                 index = index,
                                 isDark = isDark,
                                 panelOpacity = panelOpacity,
-                                firstItemOffset = firstItemOffset,
-                                firstVisibleItemIndex = firstVisibleItemIndex,
+                                firstItemOffset = panelItemOffset,
+                                firstVisibleItemIndex = panelVisibleIndex,
                                 weatherBg = weatherBg,
                                 showHideWeatherContent = showHideWeatherContent,
                                 onLongPress = onLongPress
@@ -208,8 +252,8 @@ fun WeatherContentList(
                                 isDark = isDark,
                                 isWeatherHeaderDark = isWeatherHeaderDark,
                                 panelOpacity = panelOpacity,
-                                firstItemOffset = firstItemOffset,
-                                firstVisibleItemIndex = firstVisibleItemIndex,
+                                firstItemOffset = panelItemOffset,
+                                firstVisibleItemIndex = panelVisibleIndex,
                                 showHideWeatherContent = showHideWeatherContent,
                                 onLongPress = onLongPress
                             )
@@ -219,8 +263,8 @@ fun WeatherContentList(
                                 index = index,
                                 isDark = isDark,
                                 panelOpacity = panelOpacity,
-                                firstItemOffset = firstItemOffset,
-                                firstVisibleItemIndex = firstVisibleItemIndex
+                                firstItemOffset = panelItemOffset,
+                                firstVisibleItemIndex = panelVisibleIndex
                             )
                         }
                         VerticalSpace(height = 12.dp)
@@ -238,6 +282,25 @@ fun WeatherContentList(
                 }
             }
         }
+        if (glassTopBar) {
+            // 薄纱用天气背景自己的渐变起点色 —— 这页底色是整片渐变，
+            // 铺主题背景色（白/黑）会在顶部糊出一条和页面不搭的色带。
+            // 浓度不能太低：只靠模糊压不住大字号内容，城市名背后会透出可辨认的文字
+            val scrimBase = weatherBg.firstOrNull() ?: Color.Transparent
+            LiquidGlassScrim(
+                backdrop = contentBackdrop,
+                height = glassHeight + LiquidGlassFadeHeight,
+                scrimColor = if (isSystemInDarkTheme()) {
+                    // 深色模式下天气页在渐变之上还叠了一层黑（顶部 0.25、底部 0.15），
+                    // 薄纱不跟着压暗的话，顶部会亮出一块比页面浅的色带
+                    Color.Black.copy(alpha = 0.25f).compositeOver(scrimBase)
+                } else {
+                    scrimBase
+                },
+                scrimAlpha = 0.9f,
+            )
+        }
+
         WeatherHeaderWidget(
             currentCityData = currentCityData,
             weatherHeaderOffset = if (firstVisibleItemIndex <= 0 && firstItemOffset <= 0) -refreshOffset else firstItemOffset,

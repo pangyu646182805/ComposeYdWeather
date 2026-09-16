@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kyant.backdrop.Backdrop
 import com.kyant.backdrop.drawBackdrop
+import com.kyant.backdrop.drawPlainBackdrop
 import com.kyant.backdrop.effects.blur
 import com.kyant.backdrop.effects.lens
 import com.kyant.backdrop.effects.vibrancy
@@ -169,6 +170,9 @@ fun LiquidGlassTopBar(
  *
  * @param height 这块玻璃的高度
  * @param fromTop true 表示实心的一端朝上（顶栏），false 表示朝下（底栏）
+ * @param scrimColor 材质薄纱的颜色，默认页面底色；页面底色不是纯色时（比如天气页
+ *                   那种整片渐变）必须传入实际底色，否则会糊出一块和页面不搭的色块
+ * @param scrimAlpha 薄纱最浓处的不透明度。传 0 表示不要薄纱、只保留渐进模糊
  */
 @Composable
 fun LiquidGlassScrim(
@@ -176,8 +180,9 @@ fun LiquidGlassScrim(
     height: Dp,
     modifier: Modifier = Modifier,
     fromTop: Boolean = true,
+    scrimColor: Color = MaterialTheme.colorScheme.background,
+    scrimAlpha: Float = 1f,
 ) {
-    val scrimColor = MaterialTheme.colorScheme.background
 
     Box(modifier.fillMaxWidth()) {
         // 一、渐进模糊：多层叠加拼出梯度
@@ -201,10 +206,10 @@ fun LiquidGlassScrim(
                     // 中间这两档不能省：只给首尾两个色标的话，
                     // 整段会是一条直线，实心端不够实、淡出端又掉得太急。
                     val scrimStops = listOf(
-                        0f to scrimColor,
-                        0.45f to scrimColor,
-                        0.70f to scrimColor.copy(alpha = 0.82f),
-                        0.88f to scrimColor.copy(alpha = 0.40f),
+                        0f to scrimColor.copy(alpha = scrimAlpha),
+                        0.45f to scrimColor.copy(alpha = scrimAlpha),
+                        0.70f to scrimColor.copy(alpha = scrimAlpha * 0.82f),
+                        0.88f to scrimColor.copy(alpha = scrimAlpha * 0.40f),
                         1f to Color.Transparent,
                     )
                     val brush = Brush.verticalGradient(*orient(scrimStops, fromTop))
@@ -267,7 +272,9 @@ private fun BlurBandLayer(
         Box(
             Modifier
                 .fillMaxSize()
-                .drawBackdrop(
+                // 用 plain 版：drawBackdrop 会沿边缘画一圈高光，白底页面上看不出来，
+                // 铺到天气页那种深色背景上，顶边就是一条明晃晃的白线
+                .drawPlainBackdrop(
                     backdrop = backdrop,
                     shape = { RectangleShape },
                     effects = { blur(band.radius.toPx()) },
