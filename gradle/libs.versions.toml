@@ -25,7 +25,7 @@ retrofit = "3.0.0"
 retrofit2KotlinxSerializationConverter = "1.0.0"
 # OkHttp 日志拦截器: https://github.com/square/okhttp/tree/master/okhttp-logging-interceptor
 loggingInterceptor = "5.5.0"
-toaster = "13.8"
+toaster = "15.0"
 logcat = "1.2.4"
 xxpermissions = "28.3"
 reorderable = "3.1.0"
