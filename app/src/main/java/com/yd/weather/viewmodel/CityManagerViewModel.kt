@@ -48,6 +48,10 @@ class CityManagerViewModel @Inject constructor(
     fun closeEditMode() {
         _isEditMode.value = false
         clearSelected()
+        // 退出编辑模式时拖拽未必已经结束（长按不松手、另一只手点 x 就是这种情况），
+        // 手势被掐断时 onDragStopped 不一定会来，删除按钮的禁用状态在这里一并复位，
+        // 否则下次进编辑模式删除键是灰的
+        _deleteButtonEnable.value = true
     }
 
     fun toEditMode(citySize: Int, cityData: CityData?) {

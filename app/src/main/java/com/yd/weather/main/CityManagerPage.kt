@@ -42,6 +42,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -512,6 +513,17 @@ fun ReorderableCollectionItemScope.CityManagerItem(
         hapticFeedback.performHapticFeedback(HapticFeedbackType.GestureEnd)
     }
 
+    // 退出编辑模式时把拖拽手柄关掉一帧。
+    // 长按 item 进编辑模式后手指不松，另一只手点 x 退出，这个拖拽手势依然活着，
+    // 还能接着排序 —— enabled 翻一次才能把它掐断。
+    var dragHandleEnabled by remember { mutableStateOf(true) }
+    LaunchedEffect(isEditMode) {
+        if (isEditMode) return@LaunchedEffect
+        dragHandleEnabled = false
+        withFrameNanos { }
+        dragHandleEnabled = true
+    }
+
     fun calDuration(): Int {
         if (startIndex <= 0 && endIndex <= 0) {
             return 0
@@ -585,6 +597,7 @@ fun ReorderableCollectionItemScope.CityManagerItem(
                     .then(
                         if (!(item?.isLocationCity ?: false)) {
                             Modifier.longPressDraggableHandle(
+                                enabled = dragHandleEnabled,
                                 onDragStarted = onDragHandleStarted,
                                 onDragStopped = onDragHandleStopped
                             )
