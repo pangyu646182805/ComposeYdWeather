@@ -19,6 +19,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -75,14 +76,18 @@ fun WeatherContentList(
     }
 
     val coroutineScope = rememberCoroutineScope()
-    val refreshState = rememberRefreshState(coroutineScope).apply {
-        headerHeight = 128f
-        this.onRefresh = onRefresh
-        enableRefresh = onRefresh != null
-    }
+    val refreshState = rememberRefreshState(coroutineScope)
 
-    // 把 refreshState 暴露给调用方，用于调用 refreshComplete()
-    onRefreshState?.invoke(refreshState)
+    // 这些都是往组合之外写东西，不能留在组合阶段：组合可能被丢弃或重跑，
+    // 写外部状态就成了不可控的副作用。SideEffect 在组合成功提交后才跑，
+    // 早于任何滚动回调和绘制，刷新照常工作
+    SideEffect {
+        refreshState.headerHeight = 128f
+        refreshState.onRefresh = onRefresh
+        refreshState.enableRefresh = onRefresh != null
+        // 把 refreshState 暴露给调用方，用于调用 refreshComplete()
+        onRefreshState?.invoke(refreshState)
+    }
 
     val refreshOffset by remember {
         derivedStateOf { refreshState.indicatorOffset }
@@ -111,11 +116,17 @@ fun WeatherContentList(
         else -> "释放刷新"
     }
 
-    val weatherItemsFilter =
+    // 滚动时本组合每帧都会重组（大标题要读 firstItemOffset），
+    // 这三行不缓存的话每帧都要把整个列表遍历两遍
+    val weatherItemsFilter = remember(weatherItems) {
         weatherItems?.filter { it.itemType != Constants.ITEM_TYPE_WEATHER_HEADER }
-    val weatherHeaderItemData =
+    }
+    val weatherHeaderItemData = remember(weatherItems) {
         weatherItems?.find { it.itemType == Constants.ITEM_TYPE_WEATHER_HEADER }
-    val sourceTitle = weatherItemsFilter?.firstOrNull()?.weatherData?.source?.title
+    }
+    val sourceTitle = remember(weatherItemsFilter) {
+        weatherItemsFilter?.firstOrNull()?.weatherData?.source?.title
+    }
 
     val density = LocalDensity.current
 
