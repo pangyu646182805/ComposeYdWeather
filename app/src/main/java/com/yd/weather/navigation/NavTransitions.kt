@@ -14,6 +14,13 @@ private const val DURATION = 300
 typealias EnterSpec = AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition
 typealias ExitSpec = AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition
 
+// 手势预测返回专用：比普通 Spec 多一个 swipeEdge（手势从哪一侧划入），本项目用不到，
+// 但签名必须对得上 NavHost 的 predictivePop*Transition 参数
+typealias PredictiveEnterSpec =
+        AnimatedContentTransitionScope<NavBackStackEntry>.(swipeEdge: Int) -> EnterTransition
+typealias PredictiveExitSpec =
+        AnimatedContentTransitionScope<NavBackStackEntry>.(swipeEdge: Int) -> ExitTransition
+
 /**
  * 导航转场预设
  *
@@ -28,6 +35,10 @@ typealias ExitSpec = AnimatedContentTransitionScope<NavBackStackEntry>.() -> Exi
  *     popExitTransition  = NavTransitions.Fade.exit,
  * ) { ... }
  * ```
+ *
+ * 注意：手势预测返回（从屏幕边缘划回来）不认 composable() 里的 popExitTransition，
+ * 那条路径的转场只能在 NavHost 上设，见 [PredictivePop]。改这里的返回动画时，
+ * 记得确认 [PredictivePop] 的分派是否要跟着改。
  *
  * @author Joker.X
  */

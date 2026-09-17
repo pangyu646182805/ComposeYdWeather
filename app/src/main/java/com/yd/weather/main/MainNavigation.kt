@@ -5,11 +5,26 @@ import androidx.compose.animation.SharedTransitionScope
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
+import com.yd.weather.navigation.EnterSpec
 import com.yd.weather.navigation.NavTransitions
 import com.yd.weather.routes.CardSortRoutes
 import com.yd.weather.routes.MainRoutes
 import com.yd.weather.routes.SelectCityRoutes
 import com.yd.weather.routes.WeatherBgRoutes
+
+/**
+ * 返回主页时的转场。手势预测返回的分派表也引用它，规则只留这一份
+ * （见 [com.yd.weather.navigation.PredictivePop]）
+ */
+internal val mainPopEnter: EnterSpec = {
+    if (initialState.destination.hasRoute<SelectCityRoutes.SelectCity>()) {
+        NavTransitions.SlideHorizontal.popEnter(this)
+    } else if (initialState.destination.hasRoute<WeatherBgRoutes.WeatherBgList>() || initialState.destination.hasRoute<CardSortRoutes.CardSort>()) {
+        NavTransitions.None.enter(this)
+    } else {
+        NavTransitions.Fade.enter(this)
+    }
+}
 
 /**
  * 注册主页面路由
@@ -30,15 +45,7 @@ fun NavGraphBuilder.mainScreen(sharedTransitionScope: SharedTransitionScope) {
                 NavTransitions.Fade.exit(this)
             }
         },
-        popEnterTransition = {
-            if (initialState.destination.hasRoute<SelectCityRoutes.SelectCity>()) {
-                NavTransitions.SlideHorizontal.popEnter(this)
-            } else if (initialState.destination.hasRoute<WeatherBgRoutes.WeatherBgList>() || initialState.destination.hasRoute<CardSortRoutes.CardSort>()) {
-                NavTransitions.None.enter(this)
-            } else {
-                NavTransitions.Fade.enter(this)
-            }
-        },
+        popEnterTransition = mainPopEnter,
         popExitTransition = NavTransitions.Fade.exit,
     ) {
         MainRoute(sharedTransitionScope, this@composable)

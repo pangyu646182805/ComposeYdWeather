@@ -40,6 +40,10 @@ fun AppNavHost(
             exitTransition = NavTransitions.SlideHorizontal.exit,
             popEnterTransition = NavTransitions.SlideHorizontal.popEnter,
             popExitTransition = NavTransitions.SlideHorizontal.popExit,
+            // 手势预测返回走的是另一套参数，且 composable() 不给设，只能在这里按页面分派，
+            // 否则各页面自己声明的返回动画会被库默认的 scaleOut(0.7f) 顶掉。详见 PredictivePop
+            predictivePopEnterTransition = PredictivePop.enter,
+            predictivePopExitTransition = PredictivePop.exit,
         ) {
             mainGraph(
                 navController,
