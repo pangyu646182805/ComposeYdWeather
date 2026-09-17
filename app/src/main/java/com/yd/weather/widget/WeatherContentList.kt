@@ -45,6 +45,21 @@ import com.yd.weather.model.WeatherItemData
 import com.yd.weather.utils.RefreshState
 import com.yd.weather.utils.rememberRefreshState
 
+/**
+ * 液态玻璃顶栏模式下，是否保留卡片标题的吸顶效果。
+ *
+ * 改成 true 就切回来 —— [WeatherStickyPanel] 和六个 Panel 的吸顶逻辑一行没动过，
+ * 关掉只是把喂给它们的 firstItemOffset / firstVisibleItemIndex 钉死成 0。
+ *
+ * 当初关掉的原因：内容要整条滚到顶栏背后去，吸顶的标题会停在被玻璃盖住的那片区域里，
+ * 隔着模糊仍然看得见一团影子，很脏。
+ *
+ * 所以直接改 true 只是恢复"吸在屏幕顶部"，那个脏影子会一起回来。
+ * 要让标题改吸在玻璃底边，得给 [WeatherStickyPanel] 传一个吸顶线偏移量，
+ * 再由六个 Panel 逐个透传下去，是另一档改动。
+ */
+private const val KeepStickyInGlassMode = false
+
 @Composable
 fun WeatherContentList(
     weatherScrollState: LazyListState = rememberLazyListState(),
@@ -144,13 +159,13 @@ fun WeatherContentList(
         derivedStateOf { weatherScrollState.firstVisibleItemIndex }
     }
 
-    // 玻璃模式下关掉卡片的吸顶：内容要整条滚到顶栏背后去，
-    // 吸顶标题会停在被玻璃盖住的那片区域里，隔着模糊仍然看得见，很脏。
+    // 吸顶开关见 [KeepStickyInGlassMode]。关掉的做法是把喂给卡片的这两个值钉死：
     // WeatherStickyPanel 的 offset 在 index + 1 > firstVisibleItemIndex 时恒为 0，
-    // 把这两个值钉死就等于让每张卡片一直处在"还没滚到顶"的常态。
+    // 钉死就等于让每张卡片一直处在"还没滚到顶"的常态。
     // 大标题的收缩另算，它用的仍是真实的 firstItemOffset。
-    val panelItemOffset = if (glassTopBar) 0f else firstItemOffset
-    val panelVisibleIndex = if (glassTopBar) 0 else firstVisibleItemIndex
+    val stickyDisabled = glassTopBar && !KeepStickyInGlassMode
+    val panelItemOffset = if (stickyDisabled) 0f else firstItemOffset
+    val panelVisibleIndex = if (stickyDisabled) 0 else firstVisibleItemIndex
 
     val animatedContentOpacity by animateFloatAsState(
         targetValue = contentOpacity,
