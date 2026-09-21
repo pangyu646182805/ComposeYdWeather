@@ -7,6 +7,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -75,7 +76,10 @@ internal fun SelectCityRoute(
     canPop: Boolean = false,
     viewModel: SelectCityViewModel = hiltViewModel()
 ) {
-    SetStatusBarStyle(isLight = true)
+    // 这页底色是 bg_color，夜间模式下是 #18191A（近黑）。
+    // isAppearanceLightStatusBars 指的是"状态栏背景是浅色"，系统据此画黑色图标，
+    // 写死 true 在夜间模式下就是黑底配黑图标，状态栏整片看不见。
+    SetStatusBarStyle(isLight = !isSystemInDarkTheme())
     val context = LocalContext.current
     val viewState by viewModel.viewState.collectAsState()
     val selectCityData by viewModel.selectCityData.collectAsState()

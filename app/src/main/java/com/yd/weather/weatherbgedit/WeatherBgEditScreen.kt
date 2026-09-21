@@ -8,6 +8,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
@@ -182,7 +183,10 @@ private fun WeatherBgEditScreen(
     onCancel: () -> Unit,
     onConfirm: () -> Unit
 ) {
-    SetStatusBarStyle(isLight = true)
+    // 这页底色是 bg_color，夜间模式下是 #18191A（近黑）。
+    // isAppearanceLightStatusBars 指的是"状态栏背景是浅色"，系统据此画黑色图标，
+    // 写死 true 在夜间模式下就是黑底配黑图标，状态栏整片看不见。
+    SetStatusBarStyle(isLight = !isSystemInDarkTheme())
     val displayColors = if (isNight) nightColors else colors
     val density = LocalDensity.current
     val configuration = LocalConfiguration.current

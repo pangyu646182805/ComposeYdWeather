@@ -3,6 +3,7 @@ package com.yd.weather.main
 import androidx.compose.animation.AnimatedContentScope
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionScope
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -96,7 +97,12 @@ internal fun MainScreen(
         return
     }
 
-    SetStatusBarStyle(isLight = if (isShowWeatherPage) !isWeatherHeaderDark else true)
+    // 城市管理页的底色是 bg_color，夜间模式下是 #18191A（近黑）。
+    // isAppearanceLightStatusBars 说的是"状态栏背景是浅色"，系统据此把图标画成黑色，
+    // 所以这里写死 true 会让夜间模式下黑底配黑图标，状态栏整片看不见。
+    SetStatusBarStyle(
+        isLight = if (isShowWeatherPage) !isWeatherHeaderDark else !isSystemInDarkTheme()
+    )
 
     Box(modifier = Modifier.fillMaxSize()) {
         CityManagerPage(

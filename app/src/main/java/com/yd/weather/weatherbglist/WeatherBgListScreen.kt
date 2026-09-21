@@ -12,6 +12,7 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -132,7 +133,10 @@ private fun WeatherBgListScreen(
     onPreviewBg: (String, WeatherBgModel) -> Unit,
     onAddBg: (String, WeatherBgModel?) -> Unit
 ) {
-    SetStatusBarStyle(isLight = true)
+    // 这页底色是 bg_color，夜间模式下是 #18191A（近黑）。
+    // isAppearanceLightStatusBars 指的是"状态栏背景是浅色"，系统据此画黑色图标，
+    // 写死 true 在夜间模式下就是黑底配黑图标，状态栏整片看不见。
+    SetStatusBarStyle(isLight = !isSystemInDarkTheme())
     val screenWidth = LocalConfiguration.current.screenWidthDp
     val screenHeight = LocalConfiguration.current.screenHeightDp
     val itemAspectRatio = screenWidth.toFloat() / screenHeight.toFloat()
