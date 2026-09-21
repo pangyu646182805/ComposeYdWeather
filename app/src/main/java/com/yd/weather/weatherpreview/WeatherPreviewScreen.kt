@@ -30,6 +30,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowInsetsControllerCompat
@@ -39,8 +40,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.size
 import androidx.annotation.DrawableRes
 import com.yd.weather.res.CommonIcon
+import com.kyant.backdrop.backdrops.LayerBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.yd.weather.R
 import com.yd.weather.component.AppRow
+import com.yd.weather.component.GlassIconButton
 import com.yd.weather.component.MultipleStatusView
 import com.yd.weather.component.bounceClick
 import com.yd.weather.navigation.AddCityResultKey
@@ -82,6 +86,8 @@ internal fun WeatherPreviewRoute(
     )
 
     val weatherScrollState = rememberLazyListState()
+    // 列表内容作为背景来源，顶部玻璃和左右两个按钮共用同一份
+    val backdrop = rememberLayerBackdrop()
     val refreshStateRef = remember { mutableStateOf<RefreshState?>(null) }
     var topBarOpacity by remember { mutableFloatStateOf(1f) }
 
@@ -121,6 +127,11 @@ internal fun WeatherPreviewRoute(
                     weatherItems = weatherItems,
                     itemTypeObserves = itemTypeObserves,
                     showSortCardButton = false,
+                    // 跟天气首页一致：内容滚到状态栏底下，顶上盖渐进模糊，同时关掉卡片吸顶
+                    glassTopBar = true,
+                    backdrop = backdrop,
+                    // 玻璃薄纱要取天气渐变的起点色，不传这里薄纱是全透明的，压不住底下的内容
+                    weatherBg = weatherBg,
                     previewCity = true,
                     onRefresh = {
                         viewModel.refreshWeatherData { refreshStateRef.value?.refreshComplete() }
@@ -140,11 +151,23 @@ internal fun WeatherPreviewRoute(
                     .padding(start = 16.dp, top = statusBarTop + 12.dp, end = 16.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                FunctionButton(R.mipmap.ic_close_icon1, isDark = isDark, panelOpacity = panelOpacity) {
+                FunctionButton(
+                    R.mipmap.ic_close_icon1,
+                    backdrop = backdrop,
+                    isWeatherHeaderDark = isWeatherHeaderDark,
+                    isDark = isDark,
+                    panelOpacity = panelOpacity,
+                ) {
                     viewModel.navigateBack()
                 }
 
-                FunctionButton(R.mipmap.ic_add, isDark = isDark, panelOpacity = panelOpacity) {
+                FunctionButton(
+                    R.mipmap.ic_add,
+                    backdrop = backdrop,
+                    isWeatherHeaderDark = isWeatherHeaderDark,
+                    isDark = isDark,
+                    panelOpacity = panelOpacity,
+                ) {
                     viewModel.popBackStackWithResult(AddCityResultKey, viewModel.cityId ?: "")
                 }
             }
@@ -155,14 +178,43 @@ internal fun WeatherPreviewRoute(
 @Composable
 fun FunctionButton(
     @DrawableRes iconRes: Int,
+    backdrop: LayerBackdrop? = null,
+    isWeatherHeaderDark: Boolean = false,
     isDark: Boolean = false,
     panelOpacity: Float = 0.1f,
     onClick: () -> Unit
 ) {
+    // 有 backdrop 时跟天气首页右上角那颗按钮同一套：天气背景是深是浅，
+    // 决定圆底压白还是压黑，图标也跟着反过来
+    val icon: @Composable () -> Unit = {
+        CommonIcon(
+            resId = iconRes,
+            size = 20.dp,
+            tint = colorResource(
+                if (backdrop == null || isWeatherHeaderDark) R.color.color_white
+                else R.color.color_black
+            ),
+        )
+    }
+
+    if (backdrop != null) {
+        GlassIconButton(
+            backdrop = backdrop,
+            // 正圆，直径与城市管理页顶栏按钮一致
+            modifier = Modifier.bounceClick(onClick = onClick),
+            tint = if (isWeatherHeaderDark) {
+                Color.White.copy(alpha = 0.22f)
+            } else {
+                Color.Black.copy(alpha = 0.12f)
+            },
+            content = icon,
+        )
+        return
+    }
+
     Box(
         modifier = Modifier
             .bounceClick(onClick = onClick)
-            // 正圆，直径与城市管理页顶栏按钮一致
             .size(44.dp)
             .background(
                 colorResource(if (isDark) R.color.color_white else R.color.color_black).copy(alpha = panelOpacity),
@@ -170,10 +222,6 @@ fun FunctionButton(
             ),
         contentAlignment = Alignment.Center
     ) {
-        CommonIcon(
-            resId = iconRes,
-            size = 20.dp,
-            tint = colorResource(R.color.color_white),
-        )
+        icon()
     }
 }
