@@ -5,8 +5,9 @@ import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -100,6 +101,7 @@ import sh.calvin.reorderable.ReorderableCollectionItemScope
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
 import kotlin.coroutines.cancellation.CancellationException
+import kotlin.math.abs
 
 @Composable
 fun CityManagerPage(
@@ -114,6 +116,27 @@ fun CityManagerPage(
     val selectedList by viewModel.selectedList.collectAsStateWithLifecycle()
     val deleteButtonEnable by viewModel.deleteButtonEnable.collectAsStateWithLifecycle()
     val itemAlpha by viewModel.itemAlpha.collectAsStateWithLifecycle()
+    // 收回时城市卡片的涟漪（见 cityRippleScale）。
+    // 列表藏着的时候就把它拨回起点（反正看不见）：列表一出现，第一帧就已经是缩小的样子。
+    // 要是等列表出现了再拨回去，LaunchedEffect 比重组晚一帧，会先闪一下原尺寸再缩回去。
+    // 重新进入组合时（比如从别的页面返回）列表本来就显示着，直接给原尺寸，不播
+    val rippleElapsed = remember { Animatable(if (itemAlpha > 0f) CITY_RIPPLE_DURATION_MS else 0f) }
+    LaunchedEffect(itemAlpha) {
+        if (itemAlpha > 0f) {
+            val remaining = CITY_RIPPLE_DURATION_MS - rippleElapsed.value
+            if (remaining > 0f) {
+                rippleElapsed.animateTo(
+                    CITY_RIPPLE_DURATION_MS,
+                    tween(durationMillis = remaining.toInt(), easing = LinearEasing)
+                )
+            }
+        } else {
+            rippleElapsed.snapTo(0f)
+        }
+    }
+    // 波从卡片落地的那张（当前城市）往两边扩散
+    val currentCityData by viewModel.appState().currentCityData.collectAsStateWithLifecycle()
+    val rippleOrigin = addedCities?.indexOfFirst { it.cityId == currentCityData?.cityId } ?: -1
     val density = LocalDensity.current
 
     ObserveListAddition(addedCities) {
@@ -198,7 +221,6 @@ fun CityManagerPage(
                     // 是不含 contentPadding 的。两处都要把顶栏留白补回来，
                     // 否则一镜到底的目标位置会整体上移一个顶栏的高度。
                     viewModel.listOffsetY = it.positionOnScreen().y + topBarHeightPx
-                    viewModel.listHeight = it.size.height - topBarHeightPx.toInt()
                 }
                 .graphicsLayer(clip = true), contentAlignment = Alignment.BottomCenter
         ) {
@@ -244,9 +266,10 @@ fun CityManagerPage(
                 changeDeleteButtonEnable = { enable ->
                     viewModel.changeDeleteButtonEnable(enable)
                 },
-                startIndex = viewModel.startIndex,
-                endIndex = viewModel.endIndex,
-                itemAlpha = itemAlpha
+                itemAlpha = itemAlpha,
+                rippleOriginIndex = rippleOrigin,
+                // 传函数而不是值：缩放在绘制阶段读，播放涟漪时不会让整个列表每帧重组
+                rippleElapsedMs = { rippleElapsed.value }
             )
             // 必须在 CityList 之后、且不被 layerBackdrop 包住，否则会自己模糊自己
             LiquidGlassTopBar(
@@ -338,9 +361,9 @@ fun CityList(
     removeItem: (cityData: CityData?) -> Unit,
     onItemClick: (cityData: CityData?) -> Unit,
     changeDeleteButtonEnable: (enable: Boolean) -> Unit = {},
-    startIndex: Int = 0,
-    endIndex: Int = 0,
-    itemAlpha: Float = 0f
+    itemAlpha: Float = 0f,
+    rippleOriginIndex: Int = -1,
+    rippleElapsedMs: () -> Float = { CITY_RIPPLE_DURATION_MS }
 ) {
     // 当前正在拖拽的 item index，null 表示无 item 在拖拽
     var draggingIndex by remember { mutableStateOf<Int?>(null) }
@@ -428,10 +451,11 @@ fun CityList(
                         removeItem(it)
                     },
                     changeDeleteButtonEnable = changeDeleteButtonEnable,
-                    index = index,
-                    startIndex = startIndex,
-                    endIndex = endIndex,
-                    itemAlpha = itemAlpha
+                    itemAlpha = itemAlpha,
+                    rippleScale = {
+                        if (rippleOriginIndex < 0) 1f
+                        else cityRippleScale(abs(index - rippleOriginIndex), rippleElapsedMs())
+                    }
                 )
             }
         }
@@ -471,10 +495,8 @@ fun ReorderableCollectionItemScope.CityManagerItem(
     changeDeleteButtonEnable: (enable: Boolean) -> Unit = {},
     toEditMode: (cityData: CityData?) -> Unit,
     removeItem: (cityData: CityData?) -> Unit,
-    index: Int = 0,
-    startIndex: Int = 0,
-    endIndex: Int = 0,
-    itemAlpha: Float = 0f
+    itemAlpha: Float = 0f,
+    rippleScale: () -> Float = { 1f }
 ) {
     val scope = rememberCoroutineScope()
     val hapticFeedback = LocalHapticFeedback.current
@@ -524,33 +546,16 @@ fun ReorderableCollectionItemScope.CityManagerItem(
         dragHandleEnabled = true
     }
 
-    fun calDuration(): Int {
-        if (startIndex <= 0 && endIndex <= 0) {
-            return 0
-        }
-        if (startIndex > endIndex) {
-            if (index !in endIndex..startIndex) {
-                return 0
-            }
-            val fixedIndex = startIndex - index
-            return fixedIndex * 60 + 10
-        } else {
-            if (index !in startIndex..endIndex) {
-                return 0
-            }
-            val fixedIndex = index - startIndex
-            return fixedIndex * 60 + 10
-        }
-    }
-
-    val itemAlpha by animateFloatAsState(
-        targetValue = itemAlpha,
-        animationSpec = tween(durationMillis = calDuration()),
-        label = "itemAlpha"
-    )
-
     SwipeRevealLayout(
-        modifier = Modifier.padding(horizontal = 16.dp),
+        modifier = Modifier
+            // 缩放加在整个侧滑容器上而不是只加在卡片上：卡片单独缩小的话，
+            // 背后的删除按钮会从边上露出来
+            .graphicsLayer {
+                val scale = rippleScale()
+                scaleX = scale
+                scaleY = scale
+            }
+            .padding(horizontal = 16.dp),
         revealWidth = 65.dp,
         state = swipeRevealState,
         enabled = enabled,
@@ -607,6 +612,8 @@ fun ReorderableCollectionItemScope.CityManagerItem(
                     )
                     .fillMaxWidth()
                     .height(Constants.CITY_MANAGER_ITEM_HEIGHT.dp)
+                    // 一镜到底里城市卡片整批显隐，不淡入：展开第一帧就藏掉；收回时在卡片落地前
+                    // 一下子出来，由涟漪缩放撑出动感（小米天气也是这样）
                     .alpha(itemAlpha)
                     .background(
                         brush = Brush.verticalGradient(colors = listOf(startColor, endColor)),
@@ -803,4 +810,21 @@ fun BottomOperateButton(
             }
         }
     }
+}
+
+/** 收回涟漪的时长：离得最远的卡片从最小放大回原尺寸要这么久 */
+private const val CITY_RIPPLE_DURATION_MS = 250f
+
+/**
+ * 收回时城市卡片的涟漪缩放，distance 是离落地那张隔了几张。
+ *
+ * 照着小米天气逐帧量出来的：列表出现那一帧卡片就是不透明的，但离落地那张越远越小
+ * （隔 2 张 0.92、隔 5 张 0.87），然后所有卡片以同样的速度（每 41ms 放大约 2.5%）长回原尺寸。
+ * 近的先到位、远的后到位，看起来就是一道波从落地的卡片往两边扩散。
+ * 两家的卡片间距都在 100dp 左右，按张数算的参数可以直接用。
+ */
+private fun cityRippleScale(distance: Int, elapsedMs: Float): Float {
+    if (distance <= 0) return 1f
+    val start = (0.957f - 0.0167f * distance).coerceAtLeast(0.85f)
+    return (start + 0.000607f * elapsedMs).coerceAtMost(1f)
 }

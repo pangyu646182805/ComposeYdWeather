@@ -39,6 +39,11 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.draw.blur
+import androidx.compose.animation.core.AnimationSpec
+import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.ui.graphics.graphicsLayer
+import com.yd.weather.utils.weatherCardTop
+import com.yd.weather.utils.weatherContentAlpha
 import com.yd.weather.R
 import com.yd.weather.app.ViewState
 import com.kyant.backdrop.backdrops.LayerBackdrop
@@ -58,6 +63,8 @@ import com.yd.weather.viewmodel.MainViewModel
 import com.yd.weather.widget.WeatherContentList
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
+import kotlin.math.abs
 
 @Composable
 fun WeatherPage(
@@ -85,32 +92,54 @@ fun WeatherPage(
     var showCitySelector by remember { mutableStateOf(false) }
     var citySelectorBlur by remember { mutableFloatStateOf(0f) }
     val animatable = remember { Animatable(if (isShowWeatherPage) 0f else 1f) }
+    // 卡片落回列表之后还要再淡出一下，露出底下已经就位的那张城市卡片
+    val cardAlpha = remember { Animatable(if (isShowWeatherPage) 1f else 0f) }
     val predictiveBackProgress by mainViewModel.predictiveBackProgress.collectAsStateWithLifecycle()
 
     // 手势进行中 - snap 跟随手势进度
     LaunchedEffect(predictiveBackProgress) {
-        val p = predictiveBackProgress
-        if (p != null) {
-            animatable.snapTo((1f - p).coerceIn(0f, 1f))
-        }
+        val p = predictiveBackProgress ?: return@LaunchedEffect
+        // 手势一开始就跟点击展开一样：其余城市立刻藏掉，卡片变成不透明的空卡片跟着手指长大
+        cityManagerViewModel.hideCityList()
+        cardAlpha.snapTo(1f)
+        animatable.snapTo((1f - p).coerceIn(0f, 1f))
     }
 
-    // isShowWeatherPage 变化或手势结束 - spring 动画过渡到目标值
+    // isShowWeatherPage 变化或手势结束 - 过渡到目标值
     LaunchedEffect(isShowWeatherPage, predictiveBackProgress == null) {
         if (predictiveBackProgress != null) return@LaunchedEffect
-        val target = if (isShowWeatherPage) 0f else 1f
-        if (animatable.value != target) {
-            animatable.animateTo(target, spring(stiffness = Spring.StiffnessLow))
-        }
         if (isShowWeatherPage) {
+            // 展开：其余城市第一帧就藏掉，卡片在干净的底上长大
             cityManagerViewModel.hideCityList()
+            cardAlpha.snapTo(1f)
+            if (animatable.value != 0f) {
+                animatable.animateTo(0f, cardTransitionSpec(from = animatable.value, to = 0f))
+            }
         } else {
-            cityManagerViewModel.showCityList(addedCities, cityManagerScrollState)
+            // 收回：卡片还没落地，城市列表就先回来（这时仍被卡片盖着，看不见），
+            // 落地后卡片再淡出，露出来的正好是那张城市卡片。
+            // 以前是等动画彻底停下才显示列表，卡片先淡没、列表后冒出来，中间会空一帧
+            var listShown = false
+            if (animatable.value != 1f) {
+                animatable.animateTo(1f, cardTransitionSpec(from = animatable.value, to = 1f)) {
+                    if (!listShown && value >= LIST_REVEAL_PROGRESS) {
+                        listShown = true
+                        cityManagerViewModel.showCityList()
+                    }
+                }
+            }
+            if (!listShown) cityManagerViewModel.showCityList()
+            if (cardAlpha.value > 0f) {
+                cardAlpha.animateTo(0f, tween(durationMillis = CARD_LANDING_FADE_MILLIS))
+            }
         }
     }
 
     val animValue = animatable.value
-    if (animValue < 1) {
+    if (animValue < 1f || cardAlpha.value > 0f) {
+        // 已经落回列表、只剩淡出那一小段：只画空卡片，内容和手势都不要，
+        // 否则这一层全屏的天气页会挡在城市列表上面，点不动
+        val cardOnly = animValue >= 1f
         val startColor by animateColorAsState(
             targetValue = weatherBg[0],
             animationSpec = spring(stiffness = Spring.StiffnessLow),
@@ -124,15 +153,22 @@ fun WeatherPage(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .pointerInput(Unit) {
-                    detectTapGestures(
-                        onLongPress = {
-                            showCitySelector = true
-                        }
-                    )
+                .then(
+                    if (cardOnly) Modifier
+                    else Modifier.pointerInput(Unit) {
+                        detectTapGestures(
+                            onLongPress = {
+                                showCitySelector = true
+                            }
+                        )
+                    }
+                )
+                .graphicsLayer {
+                    // 整个天气页钉在卡片上边缘跟着走，城市名和大温度始终在卡片左上角领头
+                    translationY = weatherCardTop(animValue, mainViewModel.offsetY)
+                    alpha = cardAlpha.value
                 }
-                .alpha(1 - ((animValue - 0.95f) / 0.05f).coerceIn(0f, 1f))
-                .clip(WeatherContentClip(animValue, mainViewModel.offsetY))
+                .clip(WeatherContentClip(animValue))
                 .then(if (citySelectorBlur > 0f) Modifier.blur(citySelectorBlur.dp) else Modifier)
                 .background(
                     brush = Brush.verticalGradient(colors = listOf(startColor, endColor))
@@ -153,54 +189,58 @@ fun WeatherPage(
                         )
                 )
             }
-            MultipleStatusView(
-                viewState = viewState,
-                loadingColor = colorResource(if (isDark) R.color.color_white else R.color.color_black)
-            ) {
-                WeatherContentList(
-                    weatherScrollState = weatherScrollState,
-                    isShowWeatherPage = isShowWeatherPage,
-                    glassTopBar = true,
-                    backdrop = backdrop,
-                    animValue = animValue,
-                    isDark = isDark,
-                    panelOpacity = panelOpacity,
-                    isWeatherHeaderDark = isWeatherHeaderDark,
-                    weatherBg = weatherBg,
-                    currentCityData = currentCityData,
-                    weatherItems = weatherItems,
-                    itemTypeObserves = itemTypeObserves,
-                    onRefresh = {
-                        mainViewModel.refreshWeatherData { refreshStateRef.value?.refreshComplete() }
+            if (!cardOnly) {
+                val contentAlpha = weatherContentAlpha(animValue)
+                MultipleStatusView(
+                    viewState = viewState,
+                    // 加载中、出错也一起淡；不然空卡片长大的前半程会先冒出一个转圈
+                    modifier = Modifier.alpha(contentAlpha),
+                    loadingColor = colorResource(if (isDark) R.color.color_white else R.color.color_black)
+                ) {
+                    WeatherContentList(
+                        weatherScrollState = weatherScrollState,
+                        glassTopBar = true,
+                        backdrop = backdrop,
+                        isDark = isDark,
+                        panelOpacity = panelOpacity,
+                        isWeatherHeaderDark = isWeatherHeaderDark,
+                        weatherBg = weatherBg,
+                        currentCityData = currentCityData,
+                        weatherItems = weatherItems,
+                        itemTypeObserves = itemTypeObserves,
+                        onRefresh = {
+                            mainViewModel.refreshWeatherData { refreshStateRef.value?.refreshComplete() }
+                        },
+                        onRefreshState = { refreshStateRef.value = it },
+                        onContentVisibilityChange = { show -> topBarOpacity = if (show) 1f else 0f },
+                        onCardSortButtonClick = {
+                            mainViewModel.navigate(CardSortRoutes.CardSort)
+                        },
+                        onLongPress = { showCitySelector = true }
+                    )
+                }
+                val animatedTopBarOpacity by animateFloatAsState(
+                    targetValue = topBarOpacity,
+                    animationSpec = tween(durationMillis = 200),
+                    label = "topBarOpacity"
+                )
+                CenterTopAppBar(
+                    // 右上角按钮也是天气页的内容，跟着一起淡；不然会被卡片带着满屏跑
+                    modifier = Modifier.alpha(animatedTopBarOpacity * contentAlpha),
+                    showBackIcon = false,
+                    colors = topAppBarColors(containerColor = colorResource(R.color.transparent)),
+                    actions = {
+                        RightIcon(
+                            backdrop = backdrop,
+                            isWeatherHeaderDark = isWeatherHeaderDark,
+                        ) {
+                            mainViewModel.showCityManagerPage(
+                                cityManagerViewModel, cityManagerScrollState
+                            )
+                        }
                     },
-                    onRefreshState = { refreshStateRef.value = it },
-                    onContentVisibilityChange = { show -> topBarOpacity = if (show) 1f else 0f },
-                    onCardSortButtonClick = {
-                        mainViewModel.navigate(CardSortRoutes.CardSort)
-                    },
-                    onLongPress = { showCitySelector = true }
                 )
             }
-            val animatedTopBarOpacity by animateFloatAsState(
-                targetValue = topBarOpacity,
-                animationSpec = tween(durationMillis = 200),
-                label = "topBarOpacity"
-            )
-            CenterTopAppBar(
-                modifier = Modifier.alpha(animatedTopBarOpacity),
-                showBackIcon = false,
-                colors = topAppBarColors(containerColor = colorResource(R.color.transparent)),
-                actions = {
-                    RightIcon(
-                        backdrop = backdrop,
-                        isWeatherHeaderDark = isWeatherHeaderDark,
-                    ) {
-                        mainViewModel.showCityManagerPage(
-                            cityManagerViewModel, cityManagerScrollState
-                        )
-                    }
-                },
-            )
         }
     }
 
@@ -273,3 +313,24 @@ fun RightIcon(
         }
     }
 }
+
+/** 卡片从列表项走到全屏（或反过来）走完全程的时长 */
+private const val CARD_TRANSITION_MILLIS = 300
+
+/** 卡片落回列表后，空卡片淡出、露出城市卡片的时长 */
+private const val CARD_LANDING_FADE_MILLIS = 150
+
+/** 收回走到这个进度时让城市列表回来，此时卡片还比列表项大一圈，正好盖住它 */
+private const val LIST_REVEAL_PROGRESS = 0.78f
+
+/**
+ * 一镜到底的运动曲线：CSS 的 ease。
+ * 拿小米天气录屏逐帧量出的卡片轨迹去拟合，它误差最小，展开和收回都是它
+ */
+private val CardTransitionEasing = CubicBezierEasing(0.25f, 0.1f, 0.25f, 1f)
+
+/** 手势松手时剩下的不一定是全程，时长按剩余距离缩短，免得最后一小段慢吞吞的 */
+private fun cardTransitionSpec(from: Float, to: Float): AnimationSpec<Float> = tween(
+    durationMillis = (CARD_TRANSITION_MILLIS * abs(to - from)).roundToInt().coerceAtLeast(120),
+    easing = CardTransitionEasing,
+)

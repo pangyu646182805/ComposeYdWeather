@@ -136,8 +136,6 @@ fun TabletMainScreen(
                 ) {
                     WeatherContentList(
                         weatherScrollState = weatherScrollState,
-                        isShowWeatherPage = true,
-                        animValue = 0f,
                         isDark = isDark,
                         panelOpacity = panelOpacity,
                         isWeatherHeaderDark = isWeatherHeaderDark,

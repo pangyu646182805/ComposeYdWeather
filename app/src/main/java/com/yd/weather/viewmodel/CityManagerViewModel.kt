@@ -1,6 +1,5 @@
 package com.yd.weather.viewmodel
 
-import androidx.compose.foundation.lazy.LazyListState
 import com.yd.weather.app.AppState
 import com.yd.weather.config.Constants
 import com.yd.weather.db.WeatherDbRepository
@@ -33,13 +32,7 @@ class CityManagerViewModel @Inject constructor(
     private val _itemAlpha = MutableStateFlow(0f)
     val itemAlpha: StateFlow<Float> = _itemAlpha
 
-    var startIndex = 0
-
-    var endIndex = 0
-
     var listOffsetY = 0f
-
-    var listHeight = 0
 
     var fullyVisibleIndices = emptyList<Int>()
 
@@ -143,31 +136,18 @@ class CityManagerViewModel @Inject constructor(
         }
     }
 
-    fun showCityList(addedCityData: List<CityData>?, cityManagerScrollState: LazyListState) {
-        if (addedCityData.isNullOrEmpty()) return
-        val currentCityData = appState.currentCityData.value ?: return
-        val index = addedCityData.indexOfFirst { it.cityId == currentCityData.cityId }
-        if (index >= 0) {
-            val visibleItemsInfo = cityManagerScrollState.layoutInfo.visibleItemsInfo
-            val visibleIndices = visibleItemsInfo.map { it.index - 1 }
-            if (visibleIndices.isNotEmpty()) {
-                val itemInfo = visibleItemsInfo.firstOrNull { it.index == index + 1 }
-                val itemOffsetY = itemInfo?.offset ?: 0
-                if (itemOffsetY > listHeight * 0.5f) {
-                    startIndex = visibleIndices.last()
-                    endIndex = visibleIndices.first()
-                } else {
-                    startIndex = visibleIndices.first()
-                    endIndex = visibleIndices.last()
-                }
-                _itemAlpha.value = 1f
-            }
-        }
+    /**
+     * 一镜到底收回时让城市卡片整批回来。
+     *
+     * 由天气页在卡片落地之前调用（那时卡片还比列表项大一圈，正好盖住它），
+     * 所以不再错峰逐张淡入：小米天气也是一次性出来的，错峰只会让收回拖长半秒多。
+     */
+    fun showCityList() {
+        _itemAlpha.value = 1f
     }
 
+    /** 一镜到底展开的第一帧把其余城市卡片藏掉，放大的卡片在干净的底上长大 */
     fun hideCityList() {
-        startIndex = 0
-        endIndex = 0
         _itemAlpha.value = 0f
     }
 }

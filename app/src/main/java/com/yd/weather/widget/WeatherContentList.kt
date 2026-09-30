@@ -63,8 +63,6 @@ private const val KeepStickyInGlassMode = false
 @Composable
 fun WeatherContentList(
     weatherScrollState: LazyListState = rememberLazyListState(),
-    isShowWeatherPage: Boolean = true,
-    animValue: Float = 0f,
     isDark: Boolean = false,
     panelOpacity: Float = 0.1f,
     isWeatherHeaderDark: Boolean = false,
@@ -176,12 +174,8 @@ fun WeatherContentList(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .alpha(
-                animatedContentOpacity * (if (isShowWeatherPage)
-                    1 - ((animValue - 0.8f) / 0.2f).coerceIn(0f, 1f)
-                else
-                    ((0.2f - animValue) / 0.2f).coerceIn(0f, 1f))
-            )
+            // 一镜到底里的淡入淡出由外层天气页按进度统一控制，这里只管卡片展开详情时的隐藏
+            .alpha(animatedContentOpacity)
     ) {
         Box(
             modifier = Modifier
