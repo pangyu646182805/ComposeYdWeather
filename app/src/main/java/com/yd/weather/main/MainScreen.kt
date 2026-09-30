@@ -10,6 +10,9 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
@@ -97,11 +100,16 @@ internal fun MainScreen(
         return
     }
 
+    // 状态栏图标色跟着卡片走，不跟 isShowWeatherPage：卡片盖住状态栏才按天气页头的深浅来。
+    // 直接看 isShowWeatherPage 的话，点下城市那一刻就换成了天气页的图标色，可卡片还要
+    // 约 250ms 才长到顶，深色天气下白图标压在城市管理页的白底上，状态栏整片看不见
+    var cardCoversStatusBar by remember { mutableStateOf(isShowWeatherPage) }
+
     // 城市管理页的底色是 bg_color，夜间模式下是 #18191A（近黑）。
     // isAppearanceLightStatusBars 说的是"状态栏背景是浅色"，系统据此把图标画成黑色，
     // 所以这里写死 true 会让夜间模式下黑底配黑图标，状态栏整片看不见。
     SetStatusBarStyle(
-        isLight = if (isShowWeatherPage) !isWeatherHeaderDark else !isSystemInDarkTheme()
+        isLight = if (cardCoversStatusBar) !isWeatherHeaderDark else !isSystemInDarkTheme()
     )
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -125,6 +133,7 @@ internal fun MainScreen(
             weatherItems = weatherItems,
             itemTypeObserves = itemTypeObserves,
             currentCityData = currentCityData,
+            onCardCoverStatusBarChange = { cardCoversStatusBar = it },
             mainViewModel = mainViewModel,
             cityManagerViewModel = cityManagerViewModel
         )

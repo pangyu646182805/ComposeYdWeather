@@ -41,6 +41,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.draw.blur
 import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.Easing
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.graphics.graphicsLayer
 import com.yd.weather.utils.weatherCardTop
 import com.yd.weather.utils.weatherContentAlpha
@@ -79,6 +83,8 @@ fun WeatherPage(
     weatherItems: List<WeatherItemData>? = null,
     itemTypeObserves: Array<Int>? = null,
     currentCityData: CityData? = null,
+    // 卡片是否盖住了状态栏，状态栏图标该按天气页还是城市管理页的深浅来，由调用方去设
+    onCardCoverStatusBarChange: (Boolean) -> Unit = {},
     mainViewModel: MainViewModel = hiltViewModel(),
     cityManagerViewModel: CityManagerViewModel = hiltViewModel()
 ) {
@@ -95,6 +101,7 @@ fun WeatherPage(
     // 卡片落回列表之后还要再淡出一下，露出底下已经就位的那张城市卡片
     val cardAlpha = remember { Animatable(if (isShowWeatherPage) 1f else 0f) }
     val predictiveBackProgress by mainViewModel.predictiveBackProgress.collectAsStateWithLifecycle()
+    val statusBarHeight = WindowInsets.statusBars.getTop(LocalDensity.current).toFloat()
 
     // 手势进行中 - snap 跟随手势进度
     LaunchedEffect(predictiveBackProgress) {
@@ -103,6 +110,10 @@ fun WeatherPage(
         cityManagerViewModel.hideCityList()
         cardAlpha.snapTo(1f)
         animatable.snapTo((1f - p).coerceIn(0f, 1f))
+        // 手指拖到哪算哪，没法像展开那样预判，卡片过了状态栏中线就换
+        onCardCoverStatusBarChange(
+            cardCoversStatusBar(animatable.value, mainViewModel.offsetY, statusBarHeight)
+        )
     }
 
     // isShowWeatherPage 变化或手势结束 - 过渡到目标值
@@ -113,9 +124,22 @@ fun WeatherPage(
             cityManagerViewModel.hideCityList()
             cardAlpha.snapTo(1f)
             if (animatable.value != 0f) {
-                animatable.animateTo(0f, cardTransitionSpec(from = animatable.value, to = 0f))
+                val from = animatable.value
+                // 状态栏不在展开一开始就换，等卡片快长到顶再换，见 statusBarSwitchValue
+                val switchAt = statusBarSwitchValue(from, mainViewModel.offsetY, statusBarHeight)
+                var switched = false
+                animatable.animateTo(0f, cardTransitionSpec(from = from, to = 0f)) {
+                    if (!switched && value <= switchAt) {
+                        switched = true
+                        onCardCoverStatusBarChange(true)
+                    }
+                }
             }
+            onCardCoverStatusBarChange(true)
         } else {
+            // 收回时卡片起步十几毫秒就离开了屏幕顶，比系统换图标色的渐变快得多，
+            // 所以状态栏一开始就换回城市管理页的，这已经是最早能换的时候了
+            onCardCoverStatusBarChange(false)
             // 收回：卡片还没落地，城市列表就先回来（这时仍被卡片盖着，看不见），
             // 落地后卡片再淡出，露出来的正好是那张城市卡片。
             // 以前是等动画彻底停下才显示列表，卡片先淡没、列表后冒出来，中间会空一帧
@@ -330,7 +354,49 @@ private const val LIST_REVEAL_PROGRESS = 0.78f
 private val CardTransitionEasing = CubicBezierEasing(0.25f, 0.1f, 0.25f, 1f)
 
 /** 手势松手时剩下的不一定是全程，时长按剩余距离缩短，免得最后一小段慢吞吞的 */
+private fun cardTransitionMillis(from: Float, to: Float): Int =
+    (CARD_TRANSITION_MILLIS * abs(to - from)).roundToInt().coerceAtLeast(120)
+
 private fun cardTransitionSpec(from: Float, to: Float): AnimationSpec<Float> = tween(
-    durationMillis = (CARD_TRANSITION_MILLIS * abs(to - from)).roundToInt().coerceAtLeast(120),
+    durationMillis = cardTransitionMillis(from, to),
     easing = CardTransitionEasing,
 )
+
+/**
+ * 系统换状态栏图标深浅不是瞬切，小米上从录屏量出来有 120~160ms 渐变。
+ * 展开时提前半个渐变去换，让渐变的中点正好落在卡片越过状态栏的那一刻
+ */
+private const val STATUS_BAR_SWITCH_LEAD_MILLIS = 70
+
+/** 卡片上边缘过了状态栏中线就算盖住了：图标在状态栏里垂直居中，这时有一半已经落在卡片上 */
+private fun cardCoversStatusBar(animValue: Float, offsetY: Float, statusBarHeight: Float): Boolean =
+    weatherCardTop(animValue, offsetY) <= statusBarHeight / 2
+
+/**
+ * 展开时 animValue 降到多少就该换状态栏图标色。
+ *
+ * 等卡片盖住状态栏再换，刚盖上那几帧是深色卡片配黑图标；一展开就换，又是白底配白图标，
+ * 深色天气下状态栏整片看不见约 150ms（以前就是这样）。所以提前半个渐变：
+ * 前半段（黑→灰）还在白底上，后半段（灰→白）已经在卡片上，全程都看得清。
+ */
+private fun statusBarSwitchValue(from: Float, offsetY: Float, statusBarHeight: Float): Float {
+    // 卡片上边缘 = offsetY * animValue = travel * (1 - ease(t))，t 是时间走过的比例
+    val travel = offsetY * from
+    val line = statusBarHeight / 2
+    if (travel <= line) return from
+    val crossFraction = CardTransitionEasing.inverse(1f - line / travel)
+    val leadFraction = STATUS_BAR_SWITCH_LEAD_MILLIS.toFloat() / cardTransitionMillis(from, 0f)
+    val switchFraction = (crossFraction - leadFraction).coerceAtLeast(0f)
+    return from * (1f - CardTransitionEasing.transform(switchFraction))
+}
+
+/** 缓动曲线的反函数：进度走到 [progress] 时时间走过了多少。曲线单调递增，二分就够 */
+private fun Easing.inverse(progress: Float): Float {
+    var lo = 0f
+    var hi = 1f
+    repeat(20) {
+        val mid = (lo + hi) / 2
+        if (transform(mid) < progress) lo = mid else hi = mid
+    }
+    return (lo + hi) / 2
+}
