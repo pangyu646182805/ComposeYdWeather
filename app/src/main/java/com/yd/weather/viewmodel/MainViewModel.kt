@@ -17,6 +17,7 @@ import com.yd.weather.navigation.AppNavigator
 import com.yd.weather.net.ResultHandler
 import com.yd.weather.net.WeatherRepository
 import com.yd.weather.net.asResult
+import com.yd.weather.utils.DayPeriod
 import com.yd.weather.utils.LocationProvider
 import com.yd.weather.utils.MMKVUtils
 import com.yd.weather.utils.geo.GeoResolver
@@ -75,6 +76,10 @@ class MainViewModel @Inject constructor(
 
     fun appState(): AppState = _appState
 
+    // 必须声明在 init 前面：init 里就会生成第一次背景，放在后面会被这里的 null 初始化覆盖掉
+    private var weatherBgSource: WeatherBgSource? = null
+    private var weatherBgPeriod: DayPeriod? = null
+
     init {
         val weatherData = appState.currentCityData.value?.weatherData
         generateWeatherBg(null, weatherData?.weatherType, weatherData?.sunrise, weatherData?.sunset)
@@ -100,6 +105,13 @@ class MainViewModel @Inject constructor(
         viewModelScope.launch {
             appState.weatherBgMap.drop(1).collect {
                 refreshWeatherBg()
+            }
+        }
+        // 背景分上午、下午、傍晚、夜间：时钟每分钟走一次，时段变了才换背景，一天也就几次
+        viewModelScope.launch {
+            appState.clock.collect {
+                val source = weatherBgSource ?: return@collect
+                if (periodOf(source) != weatherBgPeriod) applyWeatherBg(source)
             }
         }
     }
@@ -272,14 +284,7 @@ class MainViewModel @Inject constructor(
     }
 
     private fun generateWeatherItems(weatherData: WeatherData?) {
-        // 生成天气背景
-        _weatherBg.value = appState.generateWeatherBg(weatherData)
-        // 根据天气背景计算天气头部是否是dark模式
-        _isWeatherHeaderDark.value = appState.isWeatherHeaderDark(_weatherBg.value)
-        // 根据天气背景计算天气内容是否是dark模式
-        _isDark.value = appState.isDark(_weatherBg.value)
-        // 根据天气背景计算天气面板的透明度
-        _panelOpacity.value = appState.calPanelOpacity(_weatherBg.value)
+        applyWeatherBg(WeatherBgSource(weatherData))
         _itemTypeObserves.value = appState.getItemTypeObserves(
             appState.currentWeatherObservesCardSort.value,
             Constants.ITEM_TYPE_OBSERVE, weatherData
@@ -294,10 +299,33 @@ class MainViewModel @Inject constructor(
         cacheSunrise: String?,
         cacheSunset: String?
     ) {
-        _weatherBg.value =
-            appState.generateWeatherBg(weatherData, cacheWeatherType, cacheSunrise, cacheSunset)
+        applyWeatherBg(WeatherBgSource(weatherData, cacheWeatherType, cacheSunrise, cacheSunset))
+    }
+
+    /** 生成当前背景用的那份数据，时钟每走一次拿它重算时段 */
+    private data class WeatherBgSource(
+        val weatherData: WeatherData?,
+        val cacheWeatherType: String? = null,
+        val cacheSunrise: String? = null,
+        val cacheSunset: String? = null,
+    )
+
+    private fun periodOf(source: WeatherBgSource) =
+        appState.dayPeriodOf(source.weatherData, source.cacheSunrise, source.cacheSunset)
+
+    /** 只换背景和跟着背景走的几个值，天气数据和卡片列表不动 */
+    private fun applyWeatherBg(source: WeatherBgSource) {
+        val period = periodOf(source)
+        weatherBgSource = source
+        weatherBgPeriod = period
+        _weatherBg.value = appState.generateWeatherBg(
+            source.weatherData, source.cacheWeatherType, source.cacheSunrise, source.cacheSunset, period
+        )
+        // 根据天气背景计算天气头部是否是dark模式
         _isWeatherHeaderDark.value = appState.isWeatherHeaderDark(_weatherBg.value)
+        // 根据天气背景计算天气内容是否是dark模式
         _isDark.value = appState.isDark(_weatherBg.value)
+        // 根据天气背景计算天气面板的透明度
         _panelOpacity.value = appState.calPanelOpacity(_weatherBg.value)
     }
 

@@ -92,7 +92,7 @@ import com.yd.weather.db.model.CityData
 import com.yd.weather.res.CommonIcon
 import com.yd.weather.utils.Commons
 import com.yd.weather.utils.ObserveListAddition
-import com.yd.weather.utils.getToday
+import com.yd.weather.utils.rememberDayPeriod
 import com.yd.weather.utils.rememberElasticScrollState
 import com.yd.weather.viewmodel.CityManagerViewModel
 import com.yd.weather.viewmodel.MainViewModel
@@ -500,11 +500,9 @@ fun ReorderableCollectionItemScope.CityManagerItem(
 ) {
     val scope = rememberCoroutineScope()
     val hapticFeedback = LocalHapticFeedback.current
-    val weatherBg = appState.generateWeatherBg(
-        item?.weatherData?.weatherType ?: "",
-        Commons.isNight(getToday(), item?.weatherData?.sunrise, item?.weatherData?.sunset),
-        true
-    )
+    // 每张卡按自己城市的日出日落算时段，到点自动换色
+    val period = rememberDayPeriod(appState.clock, item?.weatherData?.sunrise, item?.weatherData?.sunset)
+    val weatherBg = appState.generateWeatherBg(item?.weatherData?.weatherType ?: "", period, true)
     val startColor by animateColorAsState(
         targetValue = weatherBg[0],
         animationSpec = spring(stiffness = Spring.StiffnessLow),

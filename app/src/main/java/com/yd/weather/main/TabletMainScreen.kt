@@ -44,9 +44,8 @@ import com.yd.weather.db.model.CityData
 import com.yd.weather.model.WeatherItemData
 import com.yd.weather.res.CommonIcon
 import com.yd.weather.routes.CardSortRoutes
-import com.yd.weather.utils.Commons
 import com.yd.weather.utils.RefreshState
-import com.yd.weather.utils.getToday
+import com.yd.weather.utils.rememberDayPeriod
 import com.yd.weather.viewmodel.CityManagerViewModel
 import com.yd.weather.viewmodel.MainViewModel
 import com.yd.weather.widget.WeatherContentList
@@ -253,11 +252,8 @@ private fun TabletCityRow(
     isSelected: Boolean = false,
     onClick: () -> Unit = {}
 ) {
-    val cityBg = appState.generateWeatherBg(
-        city.weatherData?.weatherType ?: "",
-        Commons.isNight(getToday(), city.weatherData?.sunrise, city.weatherData?.sunset),
-        true
-    )
+    val period = rememberDayPeriod(appState.clock, city.weatherData?.sunrise, city.weatherData?.sunset)
+    val cityBg = appState.generateWeatherBg(city.weatherData?.weatherType ?: "", period, true)
     val isDark = appState.isWeatherHeaderDark(cityBg)
 
     Box(

@@ -1,5 +1,8 @@
 package com.yd.weather.widget
 
+import androidx.compose.animation.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
@@ -9,6 +12,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -69,6 +74,15 @@ fun WeatherHeaderWidget(
     val opacity3 = (1 - (percent - 0.7f) / (0.8f - 0.7f)).coerceIn(0f, 1f)
     val opacity4 = (1 - (percent - 0.9f) / (0.9f - 1.0f)).coerceIn(0f, 1f)
 
+    // 时段到点换背景时，字色跟背景用同一条弹簧一起过渡，不然背景还没变过去字就先翻了色；
+    // 换城市（一镜到底展开时内容正在淡入）还是直接换，过渡中的灰字会显得脏
+    val headerColorTarget = colorResource(if (isWeatherHeaderDark) R.color.color_white else R.color.color_black)
+    val headerColorAnim = remember(currentCityData?.cityId, previewCity) { Animatable(headerColorTarget) }
+    LaunchedEffect(headerColorAnim, headerColorTarget) {
+        headerColorAnim.animateTo(headerColorTarget, spring(stiffness = Spring.StiffnessLow))
+    }
+    val headerColor = headerColorAnim.value
+
     val textShadow = Shadow(
         color = colorResource(R.color.color_black).copy(alpha = 0.2f),
         offset = Offset(1f, 1f),
@@ -100,14 +114,14 @@ fun WeatherHeaderWidget(
                 CommonIcon(
                     resId = R.mipmap.ic_refresh_icon,
                     size = 16.dp,
-                    tint = colorResource(if (isWeatherHeaderDark) R.color.color_white else R.color.color_black)
+                    tint = headerColor
                         .copy(alpha = 0.6f)
                 )
                 HorizontalSpace(width = 4.dp)
                 AppText(
                     text = refreshDesc,
                     fontSize = 12.sp,
-                    color = colorResource(if (isWeatherHeaderDark) R.color.color_white else R.color.color_black)
+                    color = headerColor
                         .copy(alpha = 0.6f)
                 )
             }
@@ -127,7 +141,7 @@ fun WeatherHeaderWidget(
             ),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-            color = colorResource(if (isWeatherHeaderDark) R.color.color_white else R.color.color_black),
+            color = headerColor,
             fontWeight = FontWeight.ExtraLight,
             shadow = textShadow
         )
@@ -146,7 +160,7 @@ fun WeatherHeaderWidget(
                     AppText(
                         text = weatherItemData?.weatherData?.observe?.temp?.toString() ?: "",
                         fontSize = 92.sp,
-                        color = colorResource(if (isWeatherHeaderDark) R.color.color_white else R.color.color_black),
+                        color = headerColor,
                         fontFamily = FontFamily(Font(R.font.roboto_thin, weight = FontWeight.Thin)),
                         shadow = textShadow
                     )
@@ -156,7 +170,7 @@ fun WeatherHeaderWidget(
                         AppText(
                             text = "°",
                             fontSize = 86.sp,
-                            color = colorResource(if (isWeatherHeaderDark) R.color.color_white else R.color.color_black),
+                            color = headerColor,
                             fontFamily = FontFamily(
                                 Font(R.font.roboto_thin, weight = FontWeight.Thin)
                             ),
@@ -171,7 +185,7 @@ fun WeatherHeaderWidget(
                     AppText(
                         text = "最\n高",
                         fontSize = 15.sp,
-                        color = colorResource(if (isWeatherHeaderDark) R.color.color_white else R.color.color_black),
+                        color = headerColor,
                         fontWeight = FontWeight.ExtraLight,
                         shadow = textShadow
                     )
@@ -179,7 +193,7 @@ fun WeatherHeaderWidget(
                     AppText(
                         text = Commons.getTemp(currentWeatherDetailData?.high),
                         fontSize = 34.sp,
-                        color = colorResource(if (isWeatherHeaderDark) R.color.color_white else R.color.color_black),
+                        color = headerColor,
                         fontFamily = FontFamily(
                             Font(
                                 R.font.roboto_light,
@@ -192,7 +206,7 @@ fun WeatherHeaderWidget(
                     AppText(
                         text = "最\n低",
                         fontSize = 15.sp,
-                        color = colorResource(if (isWeatherHeaderDark) R.color.color_white else R.color.color_black),
+                        color = headerColor,
                         fontWeight = FontWeight.ExtraLight,
                         shadow = textShadow
                     )
@@ -200,7 +214,7 @@ fun WeatherHeaderWidget(
                     AppText(
                         text = Commons.getTemp(currentWeatherDetailData?.low),
                         fontSize = 34.sp,
-                        color = colorResource(if (isWeatherHeaderDark) R.color.color_white else R.color.color_black),
+                        color = headerColor,
                         fontFamily = FontFamily(
                             Font(
                                 R.font.roboto_light,
@@ -214,7 +228,7 @@ fun WeatherHeaderWidget(
                     modifier = Modifier.alpha(opacity1),
                     text = weatherDesc,
                     fontSize = 20.sp,
-                    color = colorResource(if (isWeatherHeaderDark) R.color.color_white else R.color.color_black),
+                    color = headerColor,
                     fontWeight = FontWeight.ExtraLight,
                     shadow = textShadow
                 )
@@ -223,7 +237,7 @@ fun WeatherHeaderWidget(
                 modifier = Modifier.alpha(opacity4),
                 text = "${Commons.getTemp(weatherItemData?.weatherData?.observe?.temp)} | $weatherDesc",
                 fontSize = 20.sp,
-                color = colorResource(if (isWeatherHeaderDark) R.color.color_white else R.color.color_black),
+                color = headerColor,
                 fontWeight = FontWeight.ExtraLight,
                 shadow = textShadow
             )

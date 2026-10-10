@@ -13,18 +13,26 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
+import com.yd.weather.app.AppState
 import com.yd.weather.config.ThemePreference
 import com.yd.weather.manager.ThemePreferenceManager
 import com.yd.weather.navigation.AppNavHost
 import com.yd.weather.navigation.AppNavigator
 import com.yd.weather.res.YdWeatherAppTheme
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     @Inject
     lateinit var navigator: AppNavigator
+
+    @Inject
+    lateinit var appState: AppState
 
     override fun onCreate(savedInstanceState: Bundle?) {
         // 启动页
@@ -48,5 +56,10 @@ class MainActivity : ComponentActivity() {
         }
 
         onBackPressedDispatcher.addCallback { finish() }
+
+        // 天气背景按时段换色：在前台时时钟每分钟走一次，退到后台就停，不耗电
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) { appState.runClock() }
+        }
     }
 }

@@ -1,8 +1,6 @@
 package com.yd.weather.utils
 
-import android.content.Context
-import androidx.core.content.ContextCompat
-import com.yd.weather.R
+import androidx.compose.ui.graphics.Color
 
 object WeatherBgUtils {
     fun fixedWeatherType(weatherType: String): String {
@@ -22,63 +20,88 @@ object WeatherBgUtils {
         }
     }
 
-    fun generateWeatherBg(context: Context, type: String, isDark: Boolean): List<Int> {
-        var color1 = if (isDark) R.color.color_1a1b30 else R.color.color_f47359
-        var color2 = if (isDark) R.color.color_2e3c54 else R.color.color_f1ab80
-        when (type) {
-            "CLEAR", "CLEAR_DAY", "CLEAR_NIGHT" -> {
-                color1 = if (isDark) R.color.color_1a1b30 else R.color.color_f47359
-                color2 = if (isDark) R.color.color_2e3c54 else R.color.color_f1ab80
-            }
-
-            "PARTLY_CLOUDY", "PARTLY_CLOUDY_DAY", "PARTLY_CLOUDY_NIGHT" -> {
-                color1 = if (isDark) R.color.color_2e336c else R.color.color_abb7c4
-                color2 = if (isDark) R.color.color_64648d else R.color.color_b6c7cd
-            }
-
-            "CLOUDY" -> {
-                color1 = if (isDark) R.color.color_1e2232 else R.color.color_58677f
-                color2 = if (isDark) R.color.color_354359 else R.color.color_828d9e
-            }
-
-            "LIGHT_HAZE", "MODERATE_HAZE" -> {
-                color1 = R.color.color_bc8e3e
-                color2 = R.color.color_e5bb62
-            }
-
-            "HEAVY_HAZE" -> {
-                color1 = R.color.color_b77b32
-                color2 = R.color.color_f7ba66
-            }
-
-            "LIGHT_RAIN" -> {
-                color1 = if (isDark) R.color.color_171a2a else R.color.color_5e738d
-                color2 = if (isDark) R.color.color_3c4354 else R.color.color_8f9aad
-            }
-
-            "MODERATE_RAIN", "HEAVY_RAIN", "STORM_RAIN" -> {
-                color1 = R.color.color_171a2a
-                color2 = R.color.color_3c4354
-            }
-
-            "FOG", "LIGHT_SNOW", "MODERATE_SNOW", "HEAVY_SNOW", "STORM_SNOW" -> {
-                color1 = R.color.color_abb7c4
-                color2 = R.color.color_b6c7cd
-            }
-
-            "DUST", "SAND" -> {
-                color1 = R.color.color_f7cb6a
-                color2 = R.color.color_fda085
-            }
-
-            "WIND" -> {
-                color1 = R.color.color_4776b0
-                color2 = R.color.color_e9a4b4
-            }
+    /** 内置背景在某个时段的渐变，第一个颜色在屏幕顶部 */
+    fun generateWeatherBg(type: String, period: DayPeriod): List<Color> {
+        val palette = PALETTE.getValue(fixedWeatherType(type))
+        return when (period) {
+            DayPeriod.MORNING -> palette.morning
+            DayPeriod.AFTERNOON -> palette.afternoon
+            DayPeriod.DUSK -> palette.dusk
+            DayPeriod.NIGHT -> palette.night
         }
-        return arrayListOf(
-            ContextCompat.getColor(context, color1),
-            ContextCompat.getColor(context, color2)
-        )
     }
+
+    private class Palette(
+        val day: List<Color>,
+        val night: List<Color>,
+        val morning: List<Color> = day,
+        val afternoon: List<Color> = day,
+        val dusk: List<Color> = day,
+    )
+
+    private fun gradient(top: Long, bottom: Long) = listOf(Color(top), Color(bottom))
+
+    /**
+     * 每一组都按字真正落在的位置量过，浅色、深色模式各算一遍：
+     * 页头文字（屏幕顶部到 36%）和城市卡片文字（卡片 28%~72%）对比 ≥ 4.5，
+     * 面板白字（屏幕 35% 到底，算上面板叠的白/黑）对比 ≥ 3；
+     * 同一时段同屏的两种天气，整条渐变平均色差 ≥ 12。
+     *
+     * 面板文字写死是白色，所以白天只有两种可行的配法：
+     * 整条偏中深配白字（阴、霾、雨、大风、晴下午），或者落在很窄的浅中间调配黑字
+     * （晴上午、多云、雾、雪、沙尘）。调色时别把底色调亮，面板字会看不清。
+     *
+     * 只有看得见太阳的天气才分时段：晴分上午、下午、傍晚，多云多一套傍晚。
+     */
+    private val PALETTE = mapOf(
+        "CLEAR" to Palette(
+            day = gradient(0xFF2B67BE, 0xFF1C69AD),
+            morning = gradient(0xFF8BC9F1, 0xFF73B1CC),
+            afternoon = gradient(0xFF2B67BE, 0xFF1C69AD),
+            // 头顶已经暗成暮蓝紫，暖色只留在下面一点
+            dusk = gradient(0xFF5F5F9F, 0xFF8D555C),
+            night = gradient(0xFF0F1A3A, 0xFF2B4170),
+        ),
+        "PARTLY_CLOUDY" to Palette(
+            day = gradient(0xFFB0C3DB, 0xFF96ABBD),
+            dusk = gradient(0xFF6B5E7C, 0xFF7C5C54),
+            night = gradient(0xFF353456, 0xFF55557A),
+        ),
+        "CLOUDY" to Palette(
+            day = gradient(0xFF515A61, 0xFF4A565C),
+            night = gradient(0xFF2A2B2F, 0xFF3A3C40),
+        ),
+        "LIGHT_HAZE" to Palette(
+            day = gradient(0xFF706242, 0xFF716146),
+            night = gradient(0xFF2E281F, 0xFF5C503C),
+        ),
+        "HEAVY_HAZE" to Palette(
+            day = gradient(0xFF4E4232, 0xFF463B2E),
+            night = gradient(0xFF1E1610, 0xFF2C2219),
+        ),
+        "LIGHT_RAIN" to Palette(
+            day = gradient(0xFF366688, 0xFF365C87),
+            night = gradient(0xFF182C42, 0xFF2A4560),
+        ),
+        "MODERATE_RAIN" to Palette(
+            day = gradient(0xFF2F3C55, 0xFF34425A),
+            night = gradient(0xFF0D121C, 0xFF232E40),
+        ),
+        "FOG" to Palette(
+            day = gradient(0xFFC3C2BA, 0xFFAAA8A3),
+            night = gradient(0xFF4A4A48, 0xFF605F5C),
+        ),
+        "LIGHT_SNOW" to Palette(
+            day = gradient(0xFF9ACBCB, 0xFF80B3B5),
+            night = gradient(0xFF34505C, 0xFF4A6773),
+        ),
+        "DUST" to Palette(
+            day = gradient(0xFFE4BC8A, 0xFFD29D7A),
+            night = gradient(0xFF43281A, 0xFF7A4A2E),
+        ),
+        "WIND" to Palette(
+            day = gradient(0xFF1B736D, 0xFF326F5D),
+            night = gradient(0xFF0F2F2E, 0xFF2E5D5A),
+        ),
+    )
 }

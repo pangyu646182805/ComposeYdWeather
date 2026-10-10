@@ -30,6 +30,13 @@ object Constants {
     const val CURRENT_WEATHER_OBSERVES_CARD_SORT = "CURRENT_WEATHER_OBSERVES_CARD_SORT"
     const val CURRENT_DAILY_WEATHER_TYPE = "CURRENT_DAILY_WEATHER_TYPE"
     const val CURRENT_WEATHER_BG_MAP = "CURRENT_WEATHER_BG_MAP"
+    const val WEATHER_BG_DEFAULTS_VERSION_KEY = "WEATHER_BG_DEFAULTS_VERSION"
+
+    /**
+     * 内置天气背景的版本，存储里的版本比它低就把内置那几条换成新色（见 AppState.migrateBuiltInBg）。
+     * 1：最初那套；2：重新设计、分时段的配色
+     */
+    const val WEATHER_BG_DEFAULTS_VERSION = 2
     const val LINE_CHART_DAILY_WEATHER = "LINE_CHART_DAILY_WEATHER"
     const val LIST_DAILY_WEATHER = "LIST_DAILY_WEATHER"
     const val ITEM_TYPE_WEATHER_HEADER = 0

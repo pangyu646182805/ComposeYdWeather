@@ -12,27 +12,54 @@ object Commons {
         sunset: String? = null,
     ): Boolean {
         if (dateTime == null) return false
-        if (!sunrise.isNullOrEmpty() && sunrise.contains(":") &&
-            !sunset.isNullOrEmpty() && sunset.contains(":")
-        ) {
-            return isNightByRange(dateTime, sunrise, sunset)
-        }
-        val hour = dateTime.toCalendar().get(Calendar.HOUR_OF_DAY)
-        return hour !in 6..<18
+        return dayPeriod(dateTime, sunrise, sunset) == DayPeriod.NIGHT
     }
 
-    private fun isNightByRange(
+    /**
+     * 按当天日出日落把一天分成四段：
+     * - 夜间：日落 ~ 次日日出（和以前的 [isNight] 一样）
+     * - 上午：日出 ~ 正午
+     * - 下午：正午 ~ 日落前 [DUSK_MINUTES] 分钟
+     * - 傍晚：之后到日落
+     *
+     * 正午取日出日落的中点，不写死 12 点：全国都用北京时间，乌鲁木齐的正午在 14 点左右，
+     * 哈尔滨在 11 点出头，写死的话新疆中午 12 点就进了「下午」。
+     * 日照短的时候傍晚不早于正午，下午被压短甚至没有。
+     * 没有日出日落数据时按 6、12、17、18 点切。
+     */
+    fun dayPeriod(
         dateTime: Date,
-        sunrise: String,
-        sunset: String,
-    ): Boolean {
+        sunrise: String? = null,
+        sunset: String? = null,
+    ): DayPeriod {
         val cal = dateTime.toCalendar()
-        val currentMinutes = cal.get(Calendar.HOUR_OF_DAY) * 60 + cal.get(Calendar.MINUTE)
+        val now = cal.get(Calendar.HOUR_OF_DAY) * 60 + cal.get(Calendar.MINUTE)
+        val rise = sunrise.toTotalMinutesOrNull()
+        val set = sunset.toTotalMinutesOrNull()
+        if (rise == null || set == null || set <= rise) {
+            return when (now / 60) {
+                in 6..<12 -> DayPeriod.MORNING
+                in 12..<17 -> DayPeriod.AFTERNOON
+                in 17..<18 -> DayPeriod.DUSK
+                else -> DayPeriod.NIGHT
+            }
+        }
+        if (now !in rise..<set) return DayPeriod.NIGHT
+        val noon = (rise + set) / 2
+        val duskStart = maxOf(noon, set - DUSK_MINUTES)
+        return when {
+            now < noon -> DayPeriod.MORNING
+            now < duskStart -> DayPeriod.AFTERNOON
+            else -> DayPeriod.DUSK
+        }
+    }
 
-        val sunriseMinutes = sunrise.toTotalMinutes()
-        val sunsetMinutes = sunset.toTotalMinutes()
+    /** 傍晚从日落前多久开始 */
+    private const val DUSK_MINUTES = 60
 
-        return currentMinutes !in sunriseMinutes..<sunsetMinutes
+    private fun String?.toTotalMinutesOrNull(): Int? {
+        if (isNullOrEmpty() || !contains(":")) return null
+        return toTotalMinutes()
     }
 
     private fun Date.toCalendar(): Calendar = Calendar.getInstance().also { it.time = this }
