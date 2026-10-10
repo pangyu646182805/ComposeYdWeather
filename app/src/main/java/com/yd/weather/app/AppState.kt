@@ -77,7 +77,7 @@ class AppState @Inject constructor(
         "LIGHT_RAIN" to arrayListOf(
             WeatherBgModel(
                 isSelected = true,
-                supportEdit = true,
+                supportEdit = false,
                 colors = generateWeatherBg("LIGHT_RAIN", false).map { it.value },
                 nightColors = generateWeatherBg("LIGHT_RAIN", true).map { it.value },
             )
