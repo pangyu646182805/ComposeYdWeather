@@ -20,7 +20,6 @@ object MMKVUtils {
     @PublishedApi
     internal val json = Json { ignoreUnknownKeys = true }
 
-
     /**
      * MMKV 是否已初始化
      */
