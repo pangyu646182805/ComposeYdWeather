@@ -34,9 +34,9 @@ object Constants {
 
     /**
      * 内置天气背景的版本，存储里的版本比它低就把内置那几条换成新色（见 AppState.migrateBuiltInBg）。
-     * 1：最初那套；2：重新设计、分时段的配色
+     * 1：最初那套；2：重新设计、分时段的配色；3：雪改银白、大风改钢青
      */
-    const val WEATHER_BG_DEFAULTS_VERSION = 2
+    const val WEATHER_BG_DEFAULTS_VERSION = 3
     const val LINE_CHART_DAILY_WEATHER = "LINE_CHART_DAILY_WEATHER"
     const val LIST_DAILY_WEATHER = "LIST_DAILY_WEATHER"
     const val ITEM_TYPE_WEATHER_HEADER = 0

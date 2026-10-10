@@ -45,7 +45,7 @@ object WeatherBgUtils {
      * 每一组都按字真正落在的位置量过，浅色、深色模式各算一遍：
      * 页头文字（屏幕顶部到 36%）和城市卡片文字（卡片 28%~72%）对比 ≥ 4.5，
      * 面板白字（屏幕 35% 到底，算上面板叠的白/黑）对比 ≥ 3；
-     * 同一时段同屏的两种天气，整条渐变平均色差 ≥ 12。
+     * 同一时段同屏的两种天气，整条渐变平均色差 ≥ 12（雪是例外，见下）。
      *
      * 面板文字写死是白色，所以白天只有两种可行的配法：
      * 整条偏中深配白字（阴、霾、雨、大风、晴下午），或者落在很窄的浅中间调配黑字
@@ -91,17 +91,19 @@ object WeatherBgUtils {
             day = gradient(0xFFC3C2BA, 0xFFAAA8A3),
             night = gradient(0xFF4A4A48, 0xFF605F5C),
         ),
+        // 银白：最像下雪天。和多云、雾只差 8~9，挨着时靠冷暖区分，为了像雪特意放宽
         "LIGHT_SNOW" to Palette(
-            day = gradient(0xFF9ACBCB, 0xFF80B3B5),
-            night = gradient(0xFF34505C, 0xFF4A6773),
+            day = gradient(0xFFB9C1C9, 0xFFA5AEB6),
+            night = gradient(0xFF505A64, 0xFF5B656F),
         ),
         "DUST" to Palette(
             day = gradient(0xFFE4BC8A, 0xFFD29D7A),
             night = gradient(0xFF43281A, 0xFF7A4A2E),
         ),
+        // 钢青：偏冷的青蓝，刮冷风时的天色
         "WIND" to Palette(
-            day = gradient(0xFF1B736D, 0xFF326F5D),
-            night = gradient(0xFF0F2F2E, 0xFF2E5D5A),
+            day = gradient(0xFF346C7E, 0xFF376C79),
+            night = gradient(0xFF385B67, 0xFF496972),
         ),
     )
 }
