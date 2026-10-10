@@ -5,8 +5,8 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import androidx.compose.ui.graphics.Color
-import androidx.core.content.ContextCompat
 import androidx.compose.ui.graphics.luminance
+import androidx.core.content.ContextCompat
 import com.drake.logcat.LogCat
 import com.yd.weather.config.Constants
 import com.yd.weather.db.model.CityData
@@ -129,7 +129,9 @@ class AppState @Inject constructor(
             if (map !== currentWeatherBgMap) {
                 MMKVUtils.putObject(Constants.CURRENT_WEATHER_BG_MAP, map)
             }
-            MMKVUtils.putInt(Constants.WEATHER_BG_DEFAULTS_VERSION_KEY, Constants.WEATHER_BG_DEFAULTS_VERSION)
+            if (version != Constants.WEATHER_BG_DEFAULTS_VERSION) {
+                MMKVUtils.putInt(Constants.WEATHER_BG_DEFAULTS_VERSION_KEY, Constants.WEATHER_BG_DEFAULTS_VERSION)
+            }
             _weatherBgMap.value = map.toMap()
         }
         return this._weatherBgMap.value
