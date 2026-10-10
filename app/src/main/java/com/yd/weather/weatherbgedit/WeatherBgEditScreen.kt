@@ -102,7 +102,6 @@ internal fun WeatherBgEditRoute(
         followAfternoon = followAfternoon,
         snapshotData = snapshotData,
         onSelectPeriod = { viewModel.selectPeriod(it) },
-        onFollowAfternoon = { viewModel.followAfternoon() },
         onSelectStart = { viewModel.selectStart(it) },
         onLabelClick = { isStart ->
             if ((isStart && isStartSelected) || (!isStart && !isStartSelected)) {
@@ -174,7 +173,6 @@ private fun WeatherBgEditScreen(
     followAfternoon: Set<DayPeriod>,
     snapshotData: SnapshotData,
     onSelectPeriod: (DayPeriod) -> Unit,
-    onFollowAfternoon: () -> Unit,
     onSelectStart: (Boolean) -> Unit,
     onLabelClick: (Boolean) -> Unit,
     onUpdateHue: (Float) -> Unit,
@@ -225,55 +223,12 @@ private fun WeatherBgEditScreen(
                         .background(tabBg),
                     contentAlignment = Alignment.Center
                 ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        AppText(
-                            text = tab.label,
-                            fontSize = 17.sp,
-                            color = colorResource(R.color.black),
-                            fontWeight = if (selected) FontWeight.Bold else null
-                        )
-                        if (!isPreviewMode && tab in followAfternoon) {
-                            AppText(
-                                text = "跟随下午",
-                                fontSize = 9.sp,
-                                color = colorResource(R.color.black).copy(alpha = 0.5f)
-                            )
-                        }
-                    }
-                }
-            }
-        }
-
-        // 跟随下午的说明和「恢复跟随下午」，高度固定，切 tab 时预览不会跳
-        if (!isPreviewMode) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(24.dp)
-                    .padding(horizontal = 32.dp),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                val hintColor = colorResource(R.color.black).copy(alpha = 0.5f)
-                when {
-                    period == DayPeriod.AFTERNOON -> AppText(
-                        text = "上午、傍晚没单独改过时跟着下午变",
-                        fontSize = 12.sp, color = hintColor
+                    AppText(
+                        text = tab.label,
+                        fontSize = 18.sp,
+                        color = colorResource(R.color.black),
+                        fontWeight = if (selected) FontWeight.Bold else null
                     )
-                    period in followAfternoon -> AppText(
-                        text = "现在用的是下午的颜色，改了就单独生效",
-                        fontSize = 12.sp, color = hintColor
-                    )
-                    period != DayPeriod.NIGHT -> {
-                        AppText(text = "已单独设置 · ", fontSize = 12.sp, color = hintColor)
-                        AppText(
-                            modifier = Modifier.alphaClick(onClick = onFollowAfternoon),
-                            text = "恢复跟随下午",
-                            fontSize = 12.sp,
-                            color = colorResource(R.color.black),
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
                 }
             }
         }

@@ -94,14 +94,6 @@ class WeatherBgEditViewModel @Inject constructor(
         _isStartSelected.value = start
     }
 
-    /** 当前的上午或傍晚改回跟随下午，单独设的颜色不要了 */
-    fun followAfternoon() {
-        val period = _period.value
-        if (period == DayPeriod.MORNING || period == DayPeriod.DUSK) {
-            _followAfternoon.value = _followAfternoon.value + period
-        }
-    }
-
     /** 获取当前选中颜色的 HSV */
     fun currentHsv(): FloatArray? {
         val index = if (_isStartSelected.value) 0 else 1
