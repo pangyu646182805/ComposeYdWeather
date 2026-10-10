@@ -7,6 +7,7 @@ import com.yd.weather.app.AppState
 import com.yd.weather.model.WeatherBgModel
 import com.yd.weather.navigation.AppNavigator
 import com.yd.weather.routes.WeatherBgRoutes
+import com.yd.weather.utils.DayPeriod
 import com.yd.weather.viewmodel.BaseViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,48 +28,65 @@ class WeatherBgEditViewModel @Inject constructor(
     val isEdit: Boolean = route.isEdit
     val isPreviewMode: Boolean = route.isPreviewMode
 
-    private val initialArgbColors: List<Int> = route.colorsJson.takeIf { it.isNotEmpty() }
-        ?.let { Json.decodeFromString<List<Int>>(it) } ?: emptyList()
-    private val initialArgbNightColors: List<Int> = route.nightColorsJson.takeIf { it.isNotEmpty() }
-        ?.let { Json.decodeFromString<List<Int>>(it) } ?: emptyList()
+    private fun decode(json: String): List<Color> = json.takeIf { it.isNotEmpty() }
+        ?.let { Json.decodeFromString<List<Int>>(it) }?.map { Color(it) } ?: emptyList()
 
-    private val editModel: WeatherBgModel? = if (isEdit && initialArgbColors.isNotEmpty()) {
+    private val initialAfternoon = decode(route.colorsJson)
+    private val initialNight = decode(route.nightColorsJson).ifEmpty { initialAfternoon }
+    private val initialMorning = decode(route.morningColorsJson)
+    private val initialDusk = decode(route.duskColorsJson)
+
+    // 只用来在列表里找到被编辑的那条（按下午、夜间色匹配，见 AppState.addWeatherBg）
+    private val editModel: WeatherBgModel? = if (isEdit && initialAfternoon.isNotEmpty()) {
         WeatherBgModel(
             supportEdit = true,
             isSelected = false,
-            colors = initialArgbColors.map { Color(it).value },
-            nightColors = initialArgbNightColors.ifEmpty { initialArgbColors }.map { Color(it).value }
+            colors = initialAfternoon.map { it.value },
+            nightColors = initialNight.map { it.value }
         )
     } else null
 
-    private val _isNight = MutableStateFlow(false)
-    val isNight: StateFlow<Boolean> = _isNight
-
-    // 颜色列表（RGB）
-    private val _colors = MutableStateFlow(initialArgbColors.map { Color(it) }.toMutableList())
-    val colors: StateFlow<List<Color>> = _colors
-
-    private val _nightColors = MutableStateFlow(
-        initialArgbNightColors.ifEmpty { initialArgbColors }.map { Color(it) }.toMutableList()
+    // 列表页看的是哪个时段，就先打开哪个 tab
+    private val _period = MutableStateFlow(
+        DayPeriod.entries.firstOrNull { it.name == route.period } ?: DayPeriod.MORNING
     )
-    val nightColors: StateFlow<List<Color>> = _nightColors
+    val period: StateFlow<DayPeriod> = _period
 
-    // HSV 列表（参照 Flutter: _hsvColors / _hsvNightColors）
+    // 每个时段一套颜色（顶部、底部各一个）
+    private val _colors = MutableStateFlow(
+        mapOf(
+            DayPeriod.MORNING to initialMorning.ifEmpty { initialAfternoon },
+            DayPeriod.AFTERNOON to initialAfternoon,
+            DayPeriod.DUSK to initialDusk.ifEmpty { initialAfternoon },
+            DayPeriod.NIGHT to initialNight,
+        )
+    )
+    val colors: StateFlow<Map<DayPeriod, List<Color>>> = _colors
+
+    // HSV 单独存一份，不从颜色往回算：饱和度拉到 0 时色相会丢（参照 Flutter: _hsvColors）
     private val _hsvColors = MutableStateFlow(
-        initialArgbColors.map { colorToHsv(Color(it)) }.toMutableList()
+        _colors.value.mapValues { (_, list) -> list.map { colorToHsv(it) } }
     )
-    val hsvColors: StateFlow<List<FloatArray>> = _hsvColors
+    val hsvColors: StateFlow<Map<DayPeriod, List<FloatArray>>> = _hsvColors
 
-    private val _hsvNightColors = MutableStateFlow(
-        initialArgbNightColors.ifEmpty { initialArgbColors }.map { colorToHsv(Color(it)) }.toMutableList()
+    /** 上午、傍晚里还跟随下午的那几个：没单独改过就跟着下午走，下午改了它们也跟着变 */
+    private val _followAfternoon = MutableStateFlow(
+        buildSet {
+            if (initialMorning.isEmpty()) add(DayPeriod.MORNING)
+            if (initialDusk.isEmpty()) add(DayPeriod.DUSK)
+        }
     )
-    val hsvNightColors: StateFlow<List<FloatArray>> = _hsvNightColors
+    val followAfternoon: StateFlow<Set<DayPeriod>> = _followAfternoon
 
     private val _isStartSelected = MutableStateFlow(true)
     val isStartSelected: StateFlow<Boolean> = _isStartSelected
 
-    fun toggleNight(night: Boolean) {
-        _isNight.value = night
+    /** 这个时段实际用的是哪套颜色：跟随下午的就是下午那套 */
+    private fun shownPeriod(period: DayPeriod) =
+        if (period in _followAfternoon.value) DayPeriod.AFTERNOON else period
+
+    fun selectPeriod(period: DayPeriod) {
+        _period.value = period
         _isStartSelected.value = true
     }
 
@@ -76,11 +94,18 @@ class WeatherBgEditViewModel @Inject constructor(
         _isStartSelected.value = start
     }
 
+    /** 当前的上午或傍晚改回跟随下午，单独设的颜色不要了 */
+    fun followAfternoon() {
+        val period = _period.value
+        if (period == DayPeriod.MORNING || period == DayPeriod.DUSK) {
+            _followAfternoon.value = _followAfternoon.value + period
+        }
+    }
+
     /** 获取当前选中颜色的 HSV */
     fun currentHsv(): FloatArray? {
         val index = if (_isStartSelected.value) 0 else 1
-        val list = if (_isNight.value) _hsvNightColors.value else _hsvColors.value
-        return list.getOrNull(index)
+        return _hsvColors.value[shownPeriod(_period.value)]?.getOrNull(index)
     }
 
     /** 通过 HEX 字符串设置颜色（如 "FF0000"） */
@@ -91,23 +116,7 @@ class WeatherBgEditViewModel @Inject constructor(
             return
         }
         val color = Color(argb)
-        val newHsv = colorToHsv(color)
-        val index = if (_isStartSelected.value) 0 else 1
-        if (_isNight.value) {
-            val hsvList = _hsvNightColors.value.toMutableList()
-            val colorList = _nightColors.value.toMutableList()
-            if (index < hsvList.size) hsvList[index] = newHsv
-            if (index < colorList.size) colorList[index] = color
-            _hsvNightColors.value = hsvList
-            _nightColors.value = colorList
-        } else {
-            val hsvList = _hsvColors.value.toMutableList()
-            val colorList = _colors.value.toMutableList()
-            if (index < hsvList.size) hsvList[index] = newHsv
-            if (index < colorList.size) colorList[index] = color
-            _hsvColors.value = hsvList
-            _colors.value = colorList
-        }
+        setCurrentColor(color, colorToHsv(color))
     }
 
     /** 更新色相（只改 H，S/V 不变） */
@@ -129,32 +138,40 @@ class WeatherBgEditViewModel @Inject constructor(
     }
 
     private fun updateHsvComponent(newHsv: FloatArray) {
-        val index = if (_isStartSelected.value) 0 else 1
-        val color = hsvToColor(newHsv)
+        setCurrentColor(hsvToColor(newHsv), newHsv)
+    }
 
-        if (_isNight.value) {
-            val hsvList = _hsvNightColors.value.toMutableList()
-            val colorList = _nightColors.value.toMutableList()
-            if (index < hsvList.size) hsvList[index] = newHsv
-            if (index < colorList.size) colorList[index] = color
-            _hsvNightColors.value = hsvList
-            _nightColors.value = colorList
-        } else {
-            val hsvList = _hsvColors.value.toMutableList()
-            val colorList = _colors.value.toMutableList()
-            if (index < hsvList.size) hsvList[index] = newHsv
-            if (index < colorList.size) colorList[index] = color
-            _hsvColors.value = hsvList
-            _colors.value = colorList
+    /** 改当前 tab 里选中的那个颜色。上午、傍晚第一次改时先把下午那套抄过来，从此单独生效 */
+    private fun setCurrentColor(color: Color, hsv: FloatArray) {
+        val period = _period.value
+        if (period in _followAfternoon.value) {
+            _colors.value += period to _colors.value.getValue(DayPeriod.AFTERNOON)
+            _hsvColors.value += period to _hsvColors.value.getValue(DayPeriod.AFTERNOON).map { it.copyOf() }
+            _followAfternoon.value -= period
         }
+        val index = if (_isStartSelected.value) 0 else 1
+        val colorList = _colors.value.getValue(period).toMutableList()
+        val hsvList = _hsvColors.value.getValue(period).toMutableList()
+        if (index < colorList.size) colorList[index] = color
+        if (index < hsvList.size) hsvList[index] = hsv
+        _colors.value += period to colorList
+        _hsvColors.value += period to hsvList
     }
 
     fun confirm() {
+        val colors = _colors.value
+        val follow = _followAfternoon.value
+        // 跟随下午的不存，存下来的背景和以前一模一样
+        val ownColors = { period: DayPeriod ->
+            colors.getValue(period).takeUnless { period in follow }?.map { it.value }
+        }
         val model = WeatherBgModel(
             supportEdit = true,
             isSelected = if (isEdit) editModel?.isSelected ?: false else false,
-            colors = _colors.value.map { it.value },
-            nightColors = _nightColors.value.map { it.value }
+            colors = colors.getValue(DayPeriod.AFTERNOON).map { it.value },
+            nightColors = colors.getValue(DayPeriod.NIGHT).map { it.value },
+            morningColors = ownColors(DayPeriod.MORNING),
+            duskColors = ownColors(DayPeriod.DUSK),
         )
         appState.addWeatherBg(weatherType, model, editModel)
         navigateBack()

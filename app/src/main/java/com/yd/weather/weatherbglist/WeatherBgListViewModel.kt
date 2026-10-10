@@ -1,7 +1,9 @@
 package com.yd.weather.weatherbglist
 
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import com.yd.weather.app.AppState
-import com.yd.weather.utils.toSafeColor
+import com.yd.weather.utils.DayPeriod
 import com.yd.weather.model.WeatherBgModel
 import com.yd.weather.navigation.AppNavigator
 import com.yd.weather.routes.WeatherBgRoutes
@@ -22,8 +24,9 @@ class WeatherBgListViewModel @Inject constructor(
     private val _weatherBgMap = MutableStateFlow<Map<String, List<WeatherBgModel>>>(emptyMap())
     val weatherBgMap: StateFlow<Map<String, List<WeatherBgModel>>> = _weatherBgMap
 
-    private val _isNight = MutableStateFlow(false)
-    val isNight: StateFlow<Boolean> = _isNight
+    // 进来先看上午，右上角按上午、下午、傍晚、夜间循环切换
+    private val _period = MutableStateFlow(DayPeriod.MORNING)
+    val period: StateFlow<DayPeriod> = _period
 
     private val _isShowMenu = MutableStateFlow(false)
     val isShowMenu: StateFlow<Boolean> = _isShowMenu
@@ -36,9 +39,13 @@ class WeatherBgListViewModel @Inject constructor(
         _weatherBgMap.value = _appState.getPublicWeatherBgMap()
     }
 
-    fun toggleNight() {
-        _isNight.value = !_isNight.value
+    fun nextPeriod() {
+        _period.value = _period.value.next()
     }
+
+    /** 某条背景在当前时段的颜色，内置背景的分时段颜色在色表里，见 AppState.weatherBgColors */
+    fun bgColors(weatherType: String, model: WeatherBgModel, period: DayPeriod): List<Color> =
+        _appState.weatherBgColors(weatherType, model, period)
 
     fun toggleMenu() {
         _isShowMenu.value = !_isShowMenu.value
@@ -73,15 +80,19 @@ class WeatherBgListViewModel @Inject constructor(
         isPreviewMode: Boolean = false
     ) {
         _isShowMenu.value = false
+        val colorsOf = { p: DayPeriod -> _appState.weatherBgColors(weatherType, model, p) }
+        val encode = { colors: List<Color> -> Json.encodeToString(colors.map { it.toArgb() }) }
+        val afternoon = colorsOf(DayPeriod.AFTERNOON)
+        // 上午、傍晚和下午一样就当作跟随下午，不一样才单独带过去（比如从内置的晴新建）
+        val ownColors = { p: DayPeriod -> colorsOf(p).takeIf { it != afternoon }?.let(encode) ?: "" }
         navigate(
             WeatherBgRoutes.WeatherBgEdit(
                 weatherType = weatherType,
-                colorsJson = model?.colors?.let { list ->
-                    Json.encodeToString(list.map { (it shr 32).toInt() })
-                } ?: "",
-                nightColorsJson = model?.nightColors?.let { list ->
-                    Json.encodeToString(list.map { (it shr 32).toInt() })
-                } ?: "",
+                colorsJson = encode(afternoon),
+                nightColorsJson = encode(colorsOf(DayPeriod.NIGHT)),
+                morningColorsJson = ownColors(DayPeriod.MORNING),
+                duskColorsJson = ownColors(DayPeriod.DUSK),
+                period = _period.value.name,
                 isEdit = isEdit,
                 isPreviewMode = isPreviewMode
             )

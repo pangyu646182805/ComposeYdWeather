@@ -67,9 +67,9 @@ import com.yd.weather.component.bounceClick
 import com.yd.weather.config.Constants
 import com.yd.weather.model.WeatherBgModel
 import com.yd.weather.res.CommonIcon
+import com.yd.weather.utils.DayPeriod
 import com.yd.weather.utils.SetStatusBarStyle
 import com.yd.weather.utils.rememberElasticScrollState
-import com.yd.weather.utils.toSafeColor
 import kotlinx.coroutines.flow.distinctUntilChanged
 
 @Composable
@@ -89,15 +89,16 @@ internal fun WeatherBgListRoute(
     }
 
     val weatherBgMap by viewModel.weatherBgMap.collectAsStateWithLifecycle()
-    val isNight by viewModel.isNight.collectAsStateWithLifecycle()
+    val period by viewModel.period.collectAsStateWithLifecycle()
     val isShowMenu by viewModel.isShowMenu.collectAsStateWithLifecycle()
 
     WeatherBgListScreen(
         weatherBgMap = weatherBgMap,
-        isNight = isNight,
+        period = period,
         isShowMenu = isShowMenu,
+        bgColors = { type, model -> viewModel.bgColors(type, model, period) },
         onBack = { viewModel.navigateBack() },
-        onToggleNight = { viewModel.toggleNight() },
+        onNextPeriod = { viewModel.nextPeriod() },
         onRemoveAll = { viewModel.removeAllWeatherBg() },
         onToggleMenu = { viewModel.toggleMenu() },
         onHideMenu = { viewModel.hideMenu() },
@@ -120,10 +121,11 @@ internal fun WeatherBgListRoute(
 @Composable
 private fun WeatherBgListScreen(
     weatherBgMap: Map<String, List<WeatherBgModel>>,
-    isNight: Boolean,
+    period: DayPeriod,
     isShowMenu: Boolean,
+    bgColors: (String, WeatherBgModel) -> List<Color>,
     onBack: () -> Unit,
-    onToggleNight: () -> Unit,
+    onNextPeriod: () -> Unit,
     onRemoveAll: () -> Unit,
     onToggleMenu: () -> Unit,
     onHideMenu: () -> Unit,
@@ -212,7 +214,7 @@ private fun WeatherBgListScreen(
                             WeatherBgGridItem(
                                 modifier = Modifier.weight(1f),
                                 model = model,
-                                isNight = isNight,
+                                colors = bgColors(weatherType, model),
                                 isShowMenu = isShowMenu,
                                 itemAspectRatio = itemAspectRatio,
                                 onLongPress = {
@@ -278,9 +280,10 @@ private fun WeatherBgListScreen(
                 // 改用项目自己的 alphaClick，和卡片排序页的「恢复默认」保持一致。
                 AppText(
                     modifier = Modifier.alphaClick {
-                        if (isShowMenu) onRemoveAll() else onToggleNight()
+                        if (isShowMenu) onRemoveAll() else onNextPeriod()
                     },
-                    text = if (isShowMenu) "全部删除" else if (isNight) "日间" else "夜间",
+                    // 显示的是点下去会切到的时段
+                    text = if (isShowMenu) "全部删除" else period.next().label,
                     color = colorResource(R.color.black),
                     fontSize = 14.sp
                 )
@@ -293,7 +296,7 @@ private fun WeatherBgListScreen(
 private fun WeatherBgGridItem(
     modifier: Modifier = Modifier,
     model: WeatherBgModel,
-    isNight: Boolean,
+    colors: List<Color>,
     isShowMenu: Boolean,
     itemAspectRatio: Float,
     onLongPress: () -> Unit,
@@ -302,10 +305,9 @@ private fun WeatherBgGridItem(
     onPreview: () -> Unit,
     onRemove: () -> Unit
 ) {
-    val colors = if (isNight) model.nightColors else model.colors
     // 参照 Flutter: 用原始颜色判断相似度（非动画中间值）
-    val color1 = colors.getOrElse(0) { 0xFFFFFFFFu }.toSafeColor()
-    val color2 = colors.getOrElse(1) { 0xFFFFFFFFu }.toSafeColor()
+    val color1 = colors.getOrElse(0) { Color.White }
+    val color2 = colors.getOrElse(1) { Color.White }
     val bgColor = colorResource(R.color.bg_color)
     val similarity1 = calSimilarity(bgColor, color1)
     val similarity2 = calSimilarity(bgColor, color2)
@@ -313,7 +315,7 @@ private fun WeatherBgGridItem(
     // 参照 Flutter: ThemeData.estimateBrightnessForColor(color1) == Brightness.dark
     val lum = color1.luminance()
     val iconDark = (lum + 0.05f).let { it * it } <= 0.15f
-    // 日间/夜间切换渐变色动画（参照 Flutter AnimatedContainer duration: 400ms）
+    // 切换时段的渐变色动画（参照 Flutter AnimatedContainer duration: 400ms）
     val animatedColor1 by animateColorAsState(
         targetValue = color1,
         animationSpec = tween(400),

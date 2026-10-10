@@ -70,6 +70,7 @@ import com.yd.weather.component.bounceClick
 import com.yd.weather.config.Constants
 import com.yd.weather.db.model.CityData
 import com.yd.weather.model.WeatherItemData
+import com.yd.weather.utils.DayPeriod
 import com.yd.weather.utils.SetStatusBarStyle
 import com.yd.weather.widget.WeatherCitySnapshot
 
@@ -77,11 +78,10 @@ import com.yd.weather.widget.WeatherCitySnapshot
 internal fun WeatherBgEditRoute(
     viewModel: WeatherBgEditViewModel = hiltViewModel()
 ) {
-    val isNight by viewModel.isNight.collectAsStateWithLifecycle()
+    val period by viewModel.period.collectAsStateWithLifecycle()
     val colors by viewModel.colors.collectAsStateWithLifecycle()
-    val nightColors by viewModel.nightColors.collectAsStateWithLifecycle()
     val hsvColors by viewModel.hsvColors.collectAsStateWithLifecycle()
-    val hsvNightColors by viewModel.hsvNightColors.collectAsStateWithLifecycle()
+    val followAfternoon by viewModel.followAfternoon.collectAsStateWithLifecycle()
     val isStartSelected by viewModel.isStartSelected.collectAsStateWithLifecycle()
     val isPreviewMode = viewModel.isPreviewMode
 
@@ -94,15 +94,15 @@ internal fun WeatherBgEditRoute(
     var showColorInputDialog by remember { mutableStateOf(false) }
 
     WeatherBgEditScreen(
-        isNight = isNight,
+        period = period,
         isPreviewMode = isPreviewMode,
         isStartSelected = isStartSelected,
         colors = colors,
-        nightColors = nightColors,
         hsvColors = hsvColors,
-        hsvNightColors = hsvNightColors,
+        followAfternoon = followAfternoon,
         snapshotData = snapshotData,
-        onToggleNight = { viewModel.toggleNight(it) },
+        onSelectPeriod = { viewModel.selectPeriod(it) },
+        onFollowAfternoon = { viewModel.followAfternoon() },
         onSelectStart = { viewModel.selectStart(it) },
         onLabelClick = { isStart ->
             if ((isStart && isStartSelected) || (!isStart && !isStartSelected)) {
@@ -166,15 +166,15 @@ private class SnapshotData(
 @SuppressLint("ConfigurationScreenWidthHeight")
 @Composable
 private fun WeatherBgEditScreen(
-    isNight: Boolean,
+    period: DayPeriod,
     isPreviewMode: Boolean,
     isStartSelected: Boolean,
-    colors: List<Color>,
-    nightColors: List<Color>,
-    hsvColors: List<FloatArray>,
-    hsvNightColors: List<FloatArray>,
+    colors: Map<DayPeriod, List<Color>>,
+    hsvColors: Map<DayPeriod, List<FloatArray>>,
+    followAfternoon: Set<DayPeriod>,
     snapshotData: SnapshotData,
-    onToggleNight: (Boolean) -> Unit,
+    onSelectPeriod: (DayPeriod) -> Unit,
+    onFollowAfternoon: () -> Unit,
     onSelectStart: (Boolean) -> Unit,
     onLabelClick: (Boolean) -> Unit,
     onUpdateHue: (Float) -> Unit,
@@ -187,7 +187,9 @@ private fun WeatherBgEditScreen(
     // isAppearanceLightStatusBars 指的是"状态栏背景是浅色"，系统据此画黑色图标，
     // 写死 true 在夜间模式下就是黑底配黑图标，状态栏整片看不见。
     SetStatusBarStyle(isLight = !isSystemInDarkTheme())
-    val displayColors = if (isNight) nightColors else colors
+    // 跟随下午的上午、傍晚，显示和编辑的都是下午那套
+    val shownPeriod = if (period in followAfternoon) DayPeriod.AFTERNOON else period
+    val displayColors = colors[shownPeriod].orEmpty()
     val density = LocalDensity.current
     val configuration = LocalConfiguration.current
     val screenWidthDp = configuration.screenWidthDp
@@ -200,7 +202,7 @@ private fun WeatherBgEditScreen(
             .statusBarsPadding()
             .navigationBarsPadding()
     ) {
-        // 日间/夜间切换 Tab（参照 Flutter: 64.w 高度，32.w 水平内边距，12.w 垂直 margin）
+        // 上午/下午/傍晚/夜间 Tab（参照 Flutter: 64.w 高度，32.w 水平内边距，12.w 垂直 margin）
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -208,45 +210,71 @@ private fun WeatherBgEditScreen(
                 .padding(horizontal = 32.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            val dayBg by animateColorAsState(
-                targetValue = if (!isNight) colorResource(R.color.black).copy(alpha = 0.25f) else Color.Transparent,
-                animationSpec = tween(400), label = "dayBg"
-            )
-            val nightBg by animateColorAsState(
-                targetValue = if (isNight) colorResource(R.color.black).copy(alpha = 0.25f) else Color.Transparent,
-                animationSpec = tween(400), label = "nightBg"
-            )
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight()
-                    .alphaClick(onClick = { if (isNight) onToggleNight(false) })
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(dayBg),
-                contentAlignment = Alignment.Center
-            ) {
-                AppText(
-                    text = "日间",
-                    fontSize = 18.sp,
-                    color = colorResource(R.color.black),
-                    fontWeight = if (!isNight) FontWeight.Bold else null
+            DayPeriod.entries.forEach { tab ->
+                val selected = tab == period
+                val tabBg by animateColorAsState(
+                    targetValue = if (selected) colorResource(R.color.black).copy(alpha = 0.25f) else Color.Transparent,
+                    animationSpec = tween(400), label = "tabBg"
                 )
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .alphaClick(onClick = { if (!selected) onSelectPeriod(tab) })
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(tabBg),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        AppText(
+                            text = tab.label,
+                            fontSize = 17.sp,
+                            color = colorResource(R.color.black),
+                            fontWeight = if (selected) FontWeight.Bold else null
+                        )
+                        if (!isPreviewMode && tab in followAfternoon) {
+                            AppText(
+                                text = "跟随下午",
+                                fontSize = 9.sp,
+                                color = colorResource(R.color.black).copy(alpha = 0.5f)
+                            )
+                        }
+                    }
+                }
             }
-            Box(
+        }
+
+        // 跟随下午的说明和「恢复跟随下午」，高度固定，切 tab 时预览不会跳
+        if (!isPreviewMode) {
+            Row(
                 modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight()
-                    .alphaClick(onClick = { if (!isNight) onToggleNight(true) })
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(nightBg),
-                contentAlignment = Alignment.Center
+                    .fillMaxWidth()
+                    .height(24.dp)
+                    .padding(horizontal = 32.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                AppText(
-                    text = "夜间",
-                    fontSize = 18.sp,
-                    color = colorResource(R.color.black),
-                    fontWeight = if (isNight) FontWeight.Bold else null
-                )
+                val hintColor = colorResource(R.color.black).copy(alpha = 0.5f)
+                when {
+                    period == DayPeriod.AFTERNOON -> AppText(
+                        text = "上午、傍晚没单独改过时跟着下午变",
+                        fontSize = 12.sp, color = hintColor
+                    )
+                    period in followAfternoon -> AppText(
+                        text = "现在用的是下午的颜色，改了就单独生效",
+                        fontSize = 12.sp, color = hintColor
+                    )
+                    period != DayPeriod.NIGHT -> {
+                        AppText(text = "已单独设置 · ", fontSize = 12.sp, color = hintColor)
+                        AppText(
+                            modifier = Modifier.alphaClick(onClick = onFollowAfternoon),
+                            text = "恢复跟随下午",
+                            fontSize = 12.sp,
+                            color = colorResource(R.color.black),
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
             }
         }
 
@@ -315,7 +343,7 @@ private fun WeatherBgEditScreen(
         // HSV 色相/饱和度/亮度滑块（参照 Flutter: 独立更新 H/S/V，互不影响）
         if (!isPreviewMode) {
             val index = if (isStartSelected) 0 else 1
-            val currentHsvList = if (isNight) hsvNightColors else hsvColors
+            val currentHsvList = hsvColors[shownPeriod].orEmpty()
             val hsv = currentHsvList.getOrNull(index)
             if (hsv != null) {
                 Column(

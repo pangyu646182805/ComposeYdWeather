@@ -11,11 +11,14 @@ import kotlinx.coroutines.flow.StateFlow
  * 一天里的四个时段，天气背景按它换色（见 [WeatherBgUtils]）。
  * 怎么划分见 [Commons.dayPeriod]。
  */
-enum class DayPeriod {
-    MORNING,
-    AFTERNOON,
-    DUSK,
-    NIGHT,
+enum class DayPeriod(val label: String) {
+    MORNING("上午"),
+    AFTERNOON("下午"),
+    DUSK("傍晚"),
+    NIGHT("夜间");
+
+    /** 天气背景列表页右上角按上午、下午、傍晚、夜间循环切换 */
+    fun next(): DayPeriod = entries[(ordinal + 1) % entries.size]
 }
 
 /**

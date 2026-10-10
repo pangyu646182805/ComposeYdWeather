@@ -15,6 +15,7 @@ import com.yd.weather.model.WeatherBgModel
 import com.yd.weather.model.WeatherData
 import com.yd.weather.model.WeatherHourData
 import com.yd.weather.model.WeatherItemData
+import com.yd.weather.model.colorsOf
 import com.yd.weather.utils.Commons
 import com.yd.weather.utils.DayPeriod
 import com.yd.weather.utils.MMKVUtils
@@ -258,13 +259,18 @@ class AppState @Inject constructor(
         if (getWeatherBgMap) {
             val weatherBgMap = getWeatherBgMap()
             val find = weatherBgMap[WeatherBgUtils.fixedWeatherType(type)]?.find { it.isSelected }
-            // 用户自己加的背景只有白天、夜间两套；内置的走下面，分时段的颜色在代码里
-            if (find != null && find.supportEdit) {
-                val colors = if (period == DayPeriod.NIGHT) find.nightColors else find.colors
-                return colors.map { it.toSafeColor() }
-            }
+            return weatherBgColors(type, find, period)
         }
         return WeatherBgUtils.generateWeatherBg(type, period)
+    }
+
+    /**
+     * 某条背景在某个时段的颜色。内置背景从色表取（分时段的颜色不进存储），
+     * 用户自己加的读它自己存的，上午、傍晚没单独设过就跟随下午
+     */
+    fun weatherBgColors(type: String, model: WeatherBgModel?, period: DayPeriod): List<Color> {
+        if (model == null || !model.supportEdit) return WeatherBgUtils.generateWeatherBg(type, period)
+        return model.colorsOf(period).map { it.toSafeColor() }
     }
 
     fun isWeatherHeaderDark(weatherBg: List<Color>?): Boolean {

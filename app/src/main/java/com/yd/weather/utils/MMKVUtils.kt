@@ -13,6 +13,13 @@ import java.util.Collections
  * @author Joker.X
  */
 object MMKVUtils {
+    /**
+     * 存取对象用的 JSON。忽略不认识的字段：以后给存储的模型加字段时，
+     * 这一版之后的版本降级回来也读得了，不会整份解析失败、当成没存过
+     */
+    @PublishedApi
+    internal val json = Json { ignoreUnknownKeys = true }
+
 
     /**
      * MMKV 是否已初始化
@@ -323,8 +330,7 @@ object MMKVUtils {
      * @author Joker.X
      */
     inline fun <reified T> putObject(key: String, value: T) {
-        val json = Json.encodeToString(value)
-        putString(key, json)
+        putString(key, json.encodeToString(value))
     }
 
     /**
@@ -336,10 +342,10 @@ object MMKVUtils {
      * @author Joker.X
      */
     inline fun <reified T> getObject(key: String): T? {
-        val json = getString(key, "")
-        return if (json.isNotEmpty()) {
+        val text = getString(key, "")
+        return if (text.isNotEmpty()) {
             try {
-                Json.decodeFromString<T>(json)
+                json.decodeFromString<T>(text)
             } catch (e: Exception) {
                 null
             }
