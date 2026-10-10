@@ -166,6 +166,8 @@ fun WeatherDailyPanel(
                 forecast15 = weatherData?.forecast15,
                 weatherData = weatherData,
                 visible = currentDailyWeatherType == Constants.LINE_CHART_DAILY_WEATHER,
+                // 城市选择页里的快照只是张截图，不能被划动
+                scrollEnabled = enable,
                 onItemClick = { clickIndex ->
                     if (!enable) return@LineChartDailyWeather
                     popupInitialIndex = clickIndex
@@ -239,6 +241,7 @@ internal fun LineChartDailyWeather(
     forecast15: List<WeatherDetailData>? = null,
     weatherData: WeatherData? = null,
     visible: Boolean = true,
+    scrollEnabled: Boolean = true,
     onItemClick: (Int) -> Unit = {},
     onLongPress: (() -> Unit)? = null
 ) {
@@ -248,7 +251,8 @@ internal fun LineChartDailyWeather(
         LazyRow(
             modifier = Modifier.fillMaxSize()
                 .nestedScroll(elastic.connection)
-                .graphicsLayer { translationX = elastic.overscrollOffset }
+                .graphicsLayer { translationX = elastic.overscrollOffset },
+            userScrollEnabled = scrollEnabled
         ) {
             itemsIndexed(forecast15) { index, item ->
                 LineChartDailyWeatherItem(
